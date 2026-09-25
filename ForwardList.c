@@ -14,6 +14,10 @@ void node_free(Node* node)
 {
     if(node)
     {
+        if(node->data)
+        {
+            free(node->data);
+        }
         free(node);
     }
 }
@@ -31,8 +35,16 @@ ForwardList* flist_alloc()
 
 void flist_free(ForwardList* flist)
 {
-    if(flist)
-        free(flist);
+    if(!flist)
+        return;
+    Node* current=flist->front;
+    while(current)
+    {
+        Node* next=current->next;
+        node_free(current);
+        current=next;
+    }
+    free(flist);
 }
 
 bool flist_empty(ForwardList* flist)
