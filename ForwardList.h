@@ -1,6 +1,7 @@
 #ifndef FORWARD_H
 #define FORWARD_H
 #include "Student.h"
+#include <stdbool.h>
 
 //万能数据
 typedef void* Data;
@@ -28,6 +29,14 @@ void node_free(Node* node);
 ForwardList* flist_alloc();
 void flist_free(ForwardList* list);
 
-//将节点插入到链表的尾部
+//判断链表是否为空
+bool flist_empty(ForwardList* flist);
+
+//将节点插入到链表的头插
+void flist_push_front(ForwardList* flist, Data data);
+
+//将节点插入到链表的尾插
+void flist_push_back(ForwardList* flist, Data data);
+
 
 #endif
