@@ -28,7 +28,6 @@ int main()
     flist_push_back(flist, student_alloc2(1008, "赵九", 59.5, 62, 86));
 
     flist_print(flist, student_print);
-    
 
     printf("======================\n");
 
@@ -38,5 +37,7 @@ int main()
     flist_print(flist, student_print);
 
     flist_free(flist);
+
+    system("pause");
     return 0;
 }
