@@ -38,5 +38,8 @@ void flist_push_front(ForwardList* flist, Data data);
 //将节点插入到链表的尾插
 void flist_push_back(ForwardList* flist, Data data);
 
+//查找数据
+Data flist_find(ForwardList* flist,int number);
+
 
 #endif

@@ -2,6 +2,8 @@
 #include "Student.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+
 
 Student* student_alloc()
 {
@@ -39,4 +41,16 @@ void student_print(Student*stu)
 const char* student_header()
 {
     return "学号\t姓名\t语文\t数学\t英语\n";
+}
+
+bool student_compare(Student* left,Student* right)
+{
+    if(left->number==right->number)
+    {
+        return true;
+    }
+    else if(!strcmp(left->name,right->name))
+    {
+        return true;
+    }
 }

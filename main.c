@@ -34,6 +34,18 @@ int main()
         current=current->next;
     }
 
+    int to_find=1004;
+    Student* find_data=(Student*)flist_find(flist,to_find);
+    printf("寻找数据\n");
+    if(find_data==NULL)
+    {
+        printf("没有找到这个数据");
+    }
+    else
+    {
+        student_print(find_data);
+    }
+
     flist_free(flist);
 
     return 0;

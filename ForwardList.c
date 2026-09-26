@@ -92,3 +92,25 @@ void flist_push_back(ForwardList* flist, Data data)
 
     flist->size++;
 }
+
+Data flist_find(ForwardList* flist,int number)
+{
+    assert(flist!=NULL);
+    if(flist_empty(flist))
+    {
+        return NULL;
+    }
+    Node* current=flist->front;
+    Student* temp=(Student*)current->data;
+
+    while(current)
+    {
+        if(temp->number==number)
+        {
+            return temp;
+        }
+        current=current->next;
+        temp=(Student*)current->data;
+    }
+    return NULL;
+}

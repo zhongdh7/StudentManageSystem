@@ -1,6 +1,7 @@
 #ifndef STUDENT_H
 #define STUDENT_H
 #include <stdint.h>
+#include <stdbool.h>
 
 // 学生结构
 typedef struct Student
@@ -27,4 +28,7 @@ const char* student_header();
 
 // 释放学生内存
 void student_free(Student*stu);
+
+// 比较学生数据
+bool student_compare(Student* left,Student* right);
 #endif
