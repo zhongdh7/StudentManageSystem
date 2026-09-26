@@ -45,4 +45,7 @@ Data flist_find(ForwardList *flist, int number);
 typedef bool (*STUDENT_COMPARE)(Student *, Student *);
 Data flist_find_data(ForwardList *flist, Data data, STUDENT_COMPARE cmp);
 
+// 删除功能
+void flist_remove(ForwardList*, Data data, STUDENT_COMPARE);
+
 #endif

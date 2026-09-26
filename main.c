@@ -25,38 +25,9 @@ int main()
     flist_push_back(flist, student_alloc2(1005, "赵六", 59.5, 62, 86));
     flist_push_back(flist, student_alloc2(1006, "赵七", 67.8, 62, 26));
     flist_push_back(flist, student_alloc2(1007, "赵八", 59.5, 62, 86));
-    Node *current = flist->front;
-    while (current)
-    {
-        student_print((Student *)current->data);
-        current = current->next;
-    }
+    flist_push_back(flist, student_alloc2(1008, "赵九", 59.5, 62, 86));
 
-    int to_find = 1004;
-    Student *find_data = (Student *)flist_find(flist, to_find);
-    Student temp;
-    strcpy(temp.name, "赵日天");
-    Student *find_data2 = (Student *)flist_find_data(flist, &temp, student_compare);
-    printf("寻找数据\n");
-    if (find_data == NULL)
-    {
-        printf("没有找到这个数据");
-    }
-    else
-    {
-        student_print(find_data);
-    }
-
-    if (find_data2 == NULL)
-    {
-        printf("没有找到这个数据");
-    }
-    else
-    {
-        student_print(find_data2);
-    }
-
+    
     flist_free(flist);
-
     return 0;
 }
