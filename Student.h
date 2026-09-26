@@ -30,6 +30,5 @@ const char *student_header();
 void student_free(Student *stu);
 
 // 比较学生数据
-
 bool student_compare(Student *left, Student *right);
 #endif

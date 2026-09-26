@@ -21,6 +21,10 @@ typedef struct ForwardList
     int size;    // 链表的长度
 } ForwardList;
 
+typedef void (*STUDENT_PRINT)(Student *);
+// 打印链表的所有信息
+void flist_print(ForwardList *flist, STUDENT_PRINT print);
+
 // 节点的创建与销毁
 Node *node_alloc(Data data);
 void node_free(Node *node);

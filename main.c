@@ -27,7 +27,8 @@ int main()
     flist_push_back(flist, student_alloc2(1007, "赵八", 59.5, 62, 86));
     flist_push_back(flist, student_alloc2(1008, "赵九", 59.5, 62, 86));
 
-    
+    flist_print(flist, student_print);
+
     flist_free(flist);
     return 0;
 }

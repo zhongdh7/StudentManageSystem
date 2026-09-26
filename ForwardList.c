@@ -2,6 +2,18 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+
+void flist_print(ForwardList *flist, STUDENT_PRINT print)
+{
+    Node* current = flist->front;
+    while (current)
+    {
+        print((Student *)current->data);
+        current = current->next;
+    }
+}
+
+
 Node *node_alloc(Data data)
 {
     Node *node = (Node *)malloc(sizeof(Node));
