@@ -152,6 +152,7 @@ void flist_remove(ForwardList *flist, Data data, STUDENT_COMPARE cmp)
     assert(flist != NULL);
     if (flist_empty(flist))
     {
+        printf("链表为空\n");
         return;
     }
     Node *pre_node = NULL;

@@ -28,6 +28,14 @@ int main()
     flist_push_back(flist, student_alloc2(1008, "赵九", 59.5, 62, 86));
 
     flist_print(flist, student_print);
+    
+
+    printf("======================\n");
+
+    Student stu;
+    strcpy(stu.name, "赵六");
+    flist_remove(flist, &stu, student_compare);
+    flist_print(flist, student_print);
 
     flist_free(flist);
     return 0;
