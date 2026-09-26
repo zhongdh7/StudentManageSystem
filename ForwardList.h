@@ -52,4 +52,10 @@ Data flist_find_data(ForwardList *flist, Data data, STUDENT_COMPARE cmp);
 // 删除功能
 void flist_remove(ForwardList *, Data data, STUDENT_COMPARE);
 
+//删除头
+void flist_remove_front(ForwardList *flist);
+
+//删除尾
+void flist_remove_tail(ForwardList *flist);
+
 #endif

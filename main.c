@@ -34,10 +34,13 @@ int main()
     Student stu;
     strcpy(stu.name, "赵六");
     flist_remove(flist, &stu, student_compare);
+    flist_remove_tail(flist);
+    flist_remove_front(flist);
     flist_print(flist, student_print);
+    printf("%d\n",flist->size);
 
     flist_free(flist);
 
-    system("pause");
+    // system("pause");
     return 0;
 }

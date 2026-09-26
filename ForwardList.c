@@ -189,3 +189,49 @@ void flist_remove(ForwardList *flist, Data data, STUDENT_COMPARE cmp)
         printf("没有相关数据\n");
     }
 }
+
+void flist_remove_front(ForwardList *flist)
+{
+    assert(flist != NULL);
+    if (flist_empty(flist))
+    {
+        return;
+    }
+    Node *pre_front = flist->front;
+    flist->front = pre_front->next;
+    if (flist->front == NULL)
+    {
+        flist->tail = NULL;
+    }
+    node_free(pre_front);
+    flist->size--;
+}
+
+void flist_remove_tail(ForwardList *flist)
+{
+    assert(flist != NULL);
+    if (flist_empty(flist))
+    {
+        return;
+    }
+
+    Node *before_tail = flist->front;
+    if (flist->front == flist->tail)
+    {
+        flist->tail = NULL;
+        node_free(flist->front);
+        flist->front = NULL;
+        flist->size--;
+        return;
+    }
+    while (before_tail->next != flist->tail && before_tail)
+    {
+        before_tail = before_tail->next;
+    }
+
+    Node *tail = flist->tail;
+    before_tail->next = NULL;
+    flist->tail = before_tail;
+    node_free(tail);
+    flist->size--;
+}
