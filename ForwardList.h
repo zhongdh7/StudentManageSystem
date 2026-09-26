@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 // 万能数据
-typedef void *Data;
+typedef void *Data; // 这个目前在我们的项目里面是指这个Student类
 // 节点
 typedef struct Node
 {
@@ -50,6 +50,6 @@ typedef bool (*STUDENT_COMPARE)(Student *, Student *);
 Data flist_find_data(ForwardList *flist, Data data, STUDENT_COMPARE cmp);
 
 // 删除功能
-void flist_remove(ForwardList*, Data data, STUDENT_COMPARE);
+void flist_remove(ForwardList *, Data data, STUDENT_COMPARE);
 
 #endif
