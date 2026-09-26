@@ -105,12 +105,12 @@ Data flist_find(ForwardList *flist, int number)
 
     while (current)
     {
+        temp = (Student *)current->data;
         if (temp->number == number)
         {
             return temp;
         }
         current = current->next;
-        temp = (Student *)current->data;
     }
     return NULL;
 }
