@@ -3,6 +3,7 @@
 #include <string.h>
 #include "Student.h"
 #include "ForwardList.h"
+#include "StudentManager.h"
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -13,34 +14,8 @@ int main()
     // Set the console output code page to UTF-8
     SetConsoleOutputCP(CP_UTF8);
 #endif
-    // Student maye={1001,"maye",59.5,62,86};
-    // printf("%s",student_header());
-    // student_print(&maye);
+    StudentManager *manager = student_manager_alloc();
 
-    ForwardList *flist = flist_alloc();
-    flist_push_front(flist, student_alloc2(1002, "赵日天", 59.5, 62, 86));
-    flist_push_front(flist, student_alloc2(1003, "李四", 59.5, 69, 36));
-    flist_push_front(flist, student_alloc2(1004, "王五", 59.5, 62, 86));
-
-    flist_push_back(flist, student_alloc2(1005, "赵六", 59.5, 62, 86));
-    flist_push_back(flist, student_alloc2(1006, "赵七", 67.8, 62, 26));
-    flist_push_back(flist, student_alloc2(1007, "赵八", 59.5, 62, 86));
-    flist_push_back(flist, student_alloc2(1008, "赵九", 59.5, 62, 86));
-
-    flist_print(flist, student_print);
-
-    printf("======================\n");
-
-    Student stu;
-    strcpy(stu.name, "赵六");
-    flist_remove(flist, &stu, student_compare);
-    flist_remove_tail(flist);
-    flist_remove_front(flist);
-    flist_print(flist, student_print);
-    printf("%d\n",flist->size);
-
-    flist_free(flist);
-
-    // system("pause");
+    student_manager_free(manager);
     return 0;
 }
