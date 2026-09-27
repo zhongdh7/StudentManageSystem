@@ -6,7 +6,7 @@
 typedef struct StudentManager
 {
     ForwardList *flist;
-}StudentManager;
+} StudentManager;
 
 // 创建学生管理器
 StudentManager *student_manager_alloc();
@@ -16,5 +16,8 @@ void student_manager_free(StudentManager *manager);
 
 // 执行学生管理器
 void student_manager_run(StudentManager *);
+
+// 菜单
+int student_manager_menu();
 
 #endif

@@ -16,6 +16,8 @@ int main()
 #endif
     StudentManager *manager = student_manager_alloc();
 
+    student_manager_run(manager);
+
     student_manager_free(manager);
     return 0;
 }
