@@ -91,7 +91,7 @@ int student_manager_menu()
     printf("|       6. 保存学生信息      |\n");
     printf("|       0. 退出系统          |\n");
     printf("==============================\n");
-    Option option;
+    Option option = -1;
     printf("请输入功能选项：");
     scanf("%d", &option);
     return option;
