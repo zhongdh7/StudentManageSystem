@@ -47,25 +47,30 @@ void student_manager_run(StudentManager *manager)
         {
         case Quit:
             printf("退出系统\n");
+            student_manager_quit(manager);
             return;
         case Entry:
-            printf("添加学生信息\n");
+            student_manager_entry(manager);
             break;
         case Print:
             printf("打印学生信息\n");
-            flist_print(manager->flist, student_print);
+            student_manager_print(manager);
             break;
         case Remove:
             printf("删除学生信息\n");
+            student_manager_remove(manager);
             break;
         case Find:
             printf("查找学生信息\n");
+            student_manager_find(manager);
             break;
         case Alter:
             printf("修改学生信息\n");
+            student_manager_alter(manager);
             break;
         case Save:
             printf("保存学生信息\n");
+            student_manager_save(manager);
             break;
         default:
             printf("无效的选项，请重新输入！\n");
@@ -74,6 +79,7 @@ void student_manager_run(StudentManager *manager)
         system("pause");
         system("cls");
     }
+    student_manager_save(manager);
 }
 
 int student_manager_menu()
@@ -95,4 +101,80 @@ int student_manager_menu()
     printf("请输入功能选项：");
     scanf("%d", &option);
     return option;
+}
+
+int student_manager_quit(StudentManager *manager)
+{
+    return 0;
+}
+
+// 添加学生信息
+int student_manager_entry(StudentManager *manager)
+{
+    // 输入数据
+    Student *stu = student_alloc();
+    printf("输入学生学号>");
+    scanf("%llu", &stu->number);
+    printf("输入学生姓名>");
+    scanf("%s",stu->name);
+    printf("输入学生语文成绩>");
+    scanf("%f",&stu->chinese);
+    printf("输入学生数学成绩>");
+    scanf("%f",&stu->math);
+    printf("输入学生英语成绩>");
+    scanf("%f",&stu->english);
+
+
+    //插入
+    flist_push_back(manager->flist,stu);
+    return 0;
+}
+
+// 打印学生信息
+int student_manager_print(StudentManager *manager)
+{
+    flist_print(manager->flist,student_print);
+    return 0;
+}
+
+// 删除学生信息
+int student_manager_remove(StudentManager *manager)
+{
+    Student temp;
+    printf("请输入学生学号>");
+    scanf("%llu",&temp.number);
+
+    Student *pstu = (Student *)flist_find(manager->flist,temp.number);
+    if (!pstu)
+    {
+        printf("未找到该学生\n");
+        return -1;
+    }
+    flist_remove(manager->flist,&temp,student_compare);
+    printf("删除成功\n");
+    return 0;
+}
+
+// 查找学生信息
+int student_manager_find(StudentManager *manager)
+{
+    return 0;
+}
+
+// 修改学生信息
+int student_manager_alter(StudentManager *manager)
+{
+    return 0;
+}
+
+// 保存学生信息
+int student_manager_save(StudentManager *manager)
+{
+    return 0;
+}
+
+// 加载学生信息
+int student_manager_load(StudentManager *manager)
+{
+    return 0;
 }

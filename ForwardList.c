@@ -6,6 +6,7 @@
 void flist_print(ForwardList *flist, STUDENT_PRINT print)
 {
     Node *current = flist->front;
+    printf("%s\n",student_header());
     while (current)
     {
         print((Student *)current->data);
