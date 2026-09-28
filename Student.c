@@ -48,9 +48,9 @@ bool student_compare(Student *left, Student *right)
     {
         return true;
     }
-    else if (!strcmp(left->name, right->name))
-    {
-        return true;
-    }
+    // else if (!strcmp(left->name, right->name))
+    // {
+    //     return true;
+    // }
     return false;
 }
