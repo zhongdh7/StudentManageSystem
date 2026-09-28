@@ -4,7 +4,7 @@
 #include <string.h>
 #include "ForwardList.h"
 #include "Student.h"
-#include "stdbool.h"
+#include <stdbool.h>
 enum Option
 {
     Quit,
@@ -26,6 +26,8 @@ StudentManager *student_manager_alloc()
         return NULL;
     }
     manager->flist = flist_alloc();
+    manager->filename="./data/student.txt";
+    manager->isrunning=true;
     return manager;
 }
 
@@ -39,7 +41,9 @@ void student_manager_free(StudentManager *manager)
 
 void student_manager_run(StudentManager *manager)
 {
-    while (true)
+    
+    student_manager_load(manager);
+    while (manager->isrunning)
     {
         Option option = student_manager_menu();
 
@@ -48,7 +52,7 @@ void student_manager_run(StudentManager *manager)
         case Quit:
             printf("退出系统\n");
             student_manager_quit(manager);
-            return;
+            break;
         case Entry:
             student_manager_entry(manager);
             break;
@@ -105,6 +109,8 @@ int student_manager_menu()
 
 int student_manager_quit(StudentManager *manager)
 {
+    manager->isrunning = false;
+    printf("成功退出系统！\n");
     return 0;
 }
 
@@ -116,24 +122,23 @@ int student_manager_entry(StudentManager *manager)
     printf("输入学生学号>");
     scanf("%llu", &stu->number);
     printf("输入学生姓名>");
-    scanf("%s",stu->name);
+    scanf("%s", stu->name);
     printf("输入学生语文成绩>");
-    scanf("%f",&stu->chinese);
+    scanf("%f", &stu->chinese);
     printf("输入学生数学成绩>");
-    scanf("%f",&stu->math);
+    scanf("%f", &stu->math);
     printf("输入学生英语成绩>");
-    scanf("%f",&stu->english);
+    scanf("%f", &stu->english);
 
-
-    //插入
-    flist_push_back(manager->flist,stu);
+    // 插入
+    flist_push_back(manager->flist, stu);
     return 0;
 }
 
 // 打印学生信息
 int student_manager_print(StudentManager *manager)
 {
-    flist_print(manager->flist,student_print);
+    flist_print(manager->flist, student_print);
     return 0;
 }
 
@@ -142,15 +147,15 @@ int student_manager_remove(StudentManager *manager)
 {
     Student temp;
     printf("请输入学生学号>");
-    scanf("%llu",&temp.number);
+    scanf("%llu", &temp.number);
 
-    Student *pstu = (Student *)flist_find(manager->flist,temp.number);
+    Student *pstu = (Student *)flist_find(manager->flist, temp.number);
     if (!pstu)
     {
         printf("未找到该学生\n");
         return -1;
     }
-    flist_remove(manager->flist,&temp,student_compare);
+    flist_remove(manager->flist, &temp, student_compare);
     printf("删除成功\n");
     return 0;
 }
@@ -158,23 +163,96 @@ int student_manager_remove(StudentManager *manager)
 // 查找学生信息
 int student_manager_find(StudentManager *manager)
 {
+    Student temp;
+    printf("请输入查找的学生学号>");
+    scanf("%llu", &temp.number);
+
+    Student *pstu = (Student *)flist_find(manager->flist, temp.number);
+    if (!pstu)
+    {
+        printf("未找到该学生\n");
+        return -1;
+    }
+    printf("%s", student_header());
+    student_print(pstu);
     return 0;
 }
 
 // 修改学生信息
 int student_manager_alter(StudentManager *manager)
 {
+    Student temp;
+    printf("请输入修改的学生学号>");
+    scanf("%llu", &temp.number);
+
+    Student *pstu = (Student *)flist_find(manager->flist, temp.number);
+    if (!pstu)
+    {
+        printf("未找到该学生\n");
+        return -1;
+    }
+    else
+    {
+        printf("输入修改的语文成绩>");
+        scanf("%f", &pstu->chinese);
+        printf("输入修改的数学成绩>");
+        scanf("%f", &pstu->math);
+        printf("输入修改的英语成绩>");
+        scanf("%f", &pstu->english);
+    }
+    printf("数据修改成功！\n");
     return 0;
 }
 
 // 保存学生信息
 int student_manager_save(StudentManager *manager)
 {
+    FILE* fp=fopen(manager->filename,"wb");
+    if(!fp)
+    {
+        perror("open error");
+        return -1;
+    }
+    for(Node*cur_node=manager->flist->front;cur_node!=NULL;cur_node=cur_node->next)
+    {
+        Student* stu=(Student*)cur_node->data;
+        fwrite(stu,sizeof(Student),1,fp);
+    }
+    fclose(fp);
     return 0;
 }
 
 // 加载学生信息
 int student_manager_load(StudentManager *manager)
 {
+    if(file_exists(manager->filename)==false)
+    {
+        system("mkdir data");
+        system("touch ./data/student.txt");
+    }
+    FILE* fp=fopen(manager->filename,"rb");
+    if(!fp)
+    {
+        perror("open error");
+        return -1;
+    }
+    Student* temp_stu=student_alloc();
+    while(fread(temp_stu,sizeof(Student),1,fp)==1)
+    {
+        flist_push_back(manager->flist,temp_stu);
+        temp_stu=student_alloc();
+    }
+    fclose(fp);
+    student_free(temp_stu);
     return 0;
+}
+
+bool file_exists(const char* filename)
+{
+    FILE*fp=fopen(filename,"rb");
+    if(fp!=NULL)
+    {
+        return true;
+    }
+    return false;
 }

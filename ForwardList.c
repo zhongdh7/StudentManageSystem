@@ -2,11 +2,12 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
+#include <stdint.h>
 
 void flist_print(ForwardList *flist, STUDENT_PRINT print)
 {
     Node *current = flist->front;
-    printf("%s\n",student_header());
+    printf("%s",student_header());
     while (current)
     {
         print((Student *)current->data);
@@ -106,7 +107,7 @@ void flist_push_back(ForwardList *flist, Data data)
     flist->size++;
 }
 
-Data flist_find(ForwardList *flist, int number)
+Data flist_find(ForwardList *flist, uint64_t number)
 {
     assert(flist != NULL);
     if (flist_empty(flist))

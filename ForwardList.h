@@ -43,7 +43,7 @@ void flist_push_front(ForwardList *flist, Data data);
 void flist_push_back(ForwardList *flist, Data data);
 
 // 查找数据
-Data flist_find(ForwardList *flist, int number);
+Data flist_find(ForwardList *flist, uint64_t number);
 
 // data 版本的查找
 typedef bool (*STUDENT_COMPARE)(Student *, Student *);

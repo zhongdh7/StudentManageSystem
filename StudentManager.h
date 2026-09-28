@@ -2,10 +2,13 @@
 #define STUDENT_MANAGER_H
 #include "ForwardList.h"
 #include "Student.h"
+#include <stdbool.h>
 
 typedef struct StudentManager
 {
     ForwardList *flist;
+    const char* filename;   //保存加载文件名
+    bool isrunning;         //是否运行管理系统
 } StudentManager;
 
 // 创建学生管理器
@@ -43,5 +46,8 @@ int student_manager_save(StudentManager *manager);
 
 // 加载学生信息
 int student_manager_load(StudentManager *manager);
+
+//判断文件是否存在
+bool file_exists(const char* filename);
 
 #endif
