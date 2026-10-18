@@ -14,12 +14,16 @@
 
   var SUBJECTS = C.SUBJECTS;
   var PAGE_SIZE = 9;
+  var DEFAULT_SIDEBAR_WIDTH = 254;
+  var MIN_SIDEBAR_WIDTH = 208;
+  var MAX_SIDEBAR_WIDTH = 360;
 
   var VIEW_META = {
     dashboard: { title: '数据看板', subtitle: '学生成绩概览与关键指标' },
     students: { title: '学生管理', subtitle: '添加、编辑、删除与查找学生记录' },
     analytics: { title: '成绩分析', subtitle: '各科表现、分数段与总分排名' },
-    data: { title: '数据管理', subtitle: '与 C 语言后端 student.txt 数据互通' }
+    data: { title: '数据管理', subtitle: '与 C 语言后端 student.txt 数据互通' },
+    guide: { title: '使用说明', subtitle: '第一次使用指南与 C 后端数据互通说明' }
   };
 
   var SORT_LABELS = {
@@ -164,6 +168,7 @@
 
   function boot() {
     initTheme();
+    initSidebarResize();
     store = new C.StudentStore(getStorage());
     var hadSaved = store.load();
     var corruptBackupSaved = false;
@@ -207,6 +212,12 @@
       window.setTimeout(function () {
         toast('当前浏览器禁用了本地存储，数据只保存在内存中，关闭页面后会丢失。', 'error', { duration: 7000 });
       }, 600);
+    }
+
+    if (!hasOnboarded()) {
+      window.setTimeout(function () {
+        openWelcomeWizard();
+      }, 450);
     }
   }
 
@@ -305,6 +316,291 @@
   }
 
   /* ------------------------------------------------------------------ *
+   * 侧边栏拖动伸缩
+   * ------------------------------------------------------------------ */
+
+  function clampSidebarWidth(value) {
+    var width = Number(value);
+    if (!Number.isFinite(width) || width <= 0) return DEFAULT_SIDEBAR_WIDTH;
+    return Math.round(Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, width)));
+  }
+
+  function readSidebarWidth() {
+    try {
+      var raw = window.localStorage.getItem(C.STORAGE_KEYS.sidebarWidth);
+      return raw === null ? DEFAULT_SIDEBAR_WIDTH : clampSidebarWidth(raw);
+    } catch (error) {
+      return DEFAULT_SIDEBAR_WIDTH;
+    }
+  }
+
+  function persistSidebarWidth(width) {
+    try {
+      window.localStorage.setItem(C.STORAGE_KEYS.sidebarWidth, String(width));
+    } catch (error) {
+      /* 忽略：宽度偏好写入失败不影响布局 */
+    }
+  }
+
+  function initSidebarResize() {
+    var resizer = $('#sidebar-resizer');
+    var root = document.documentElement;
+    if (!resizer) return;
+
+    var width = readSidebarWidth();
+
+    function applyWidth(nextWidth, persist) {
+      width = clampSidebarWidth(nextWidth);
+      root.style.setProperty('--sidebar-w', width + 'px');
+      resizer.setAttribute('aria-valuenow', String(width));
+      resizer.setAttribute('aria-valuetext', width + ' 像素');
+      if (persist) persistSidebarWidth(width);
+    }
+
+    applyWidth(width, false);
+
+    var drag = null;
+
+    resizer.addEventListener('pointerdown', function (event) {
+      if (event.button !== 0 || !window.matchMedia('(min-width: 981px)').matches) return;
+      drag = { pointerId: event.pointerId, startX: event.clientX, startWidth: width };
+      document.body.classList.add('is-resizing');
+      try {
+        resizer.setPointerCapture(event.pointerId);
+      } catch (error) {
+        /* 某些环境不支持指针捕获，仍然可以继续拖动 */
+      }
+      event.preventDefault();
+    });
+
+    resizer.addEventListener('pointermove', function (event) {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      applyWidth(drag.startWidth + (event.clientX - drag.startX), false);
+    });
+
+    function endDrag(event) {
+      if (!drag) return;
+      if (event && event.pointerId !== undefined && event.pointerId !== drag.pointerId) return;
+      drag = null;
+      document.body.classList.remove('is-resizing');
+      persistSidebarWidth(width);
+    }
+
+    resizer.addEventListener('pointerup', endDrag);
+    resizer.addEventListener('pointercancel', endDrag);
+    resizer.addEventListener('lostpointercapture', function () {
+      if (drag) endDrag();
+    });
+
+    resizer.addEventListener('dblclick', function () {
+      applyWidth(DEFAULT_SIDEBAR_WIDTH, true);
+    });
+
+    resizer.addEventListener('keydown', function (event) {
+      var step = event.shiftKey ? 24 : 8;
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault();
+        applyWidth(width + (event.key === 'ArrowRight' ? step : -step), true);
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        applyWidth(DEFAULT_SIDEBAR_WIDTH, true);
+      }
+    });
+
+    window.addEventListener('resize', function () {
+      if (!window.matchMedia('(max-width: 980px)').matches) {
+        applyWidth(width, false);
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 首次使用引导
+   * ------------------------------------------------------------------ */
+
+  function hasOnboarded() {
+    try {
+      return window.localStorage.getItem(C.STORAGE_KEYS.onboarded) === '1';
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function markOnboarded() {
+    try {
+      window.localStorage.setItem(C.STORAGE_KEYS.onboarded, '1');
+    } catch (error) {
+      /* 忽略：存储不可用不影响本次引导 */
+    }
+  }
+
+  function openBinaryPicker() {
+    var input = $('#file-binary');
+    if (input) input.click();
+    if (state.view !== 'data') navigate('data');
+  }
+
+  function openWelcomeWizard() {
+    var step = 0;
+
+    var slides = [
+      '<section class="welcome-slide is-active" data-step="0" aria-hidden="false">' +
+        '<div class="welcome-hero">' +
+          '<span class="welcome-logo">' + icon('i-graduation') + '</span>' +
+          '<div>' +
+            '<h3>欢迎使用学籍云</h3>' +
+            '<p>这是「高校学生成绩管理系统」的 Web 界面，与 C 语言控制台后端共用同一份数据。操作更方便，数据仍以 <code>student.txt</code> 二进制格式为准，可随时导入导出。</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="welcome-features">' +
+          '<span class="welcome-feature">' + icon('i-dashboard') + '数据看板</span>' +
+          '<span class="welcome-feature">' + icon('i-users') + '学生管理</span>' +
+          '<span class="welcome-feature">' + icon('i-chart') + '成绩分析</span>' +
+          '<span class="welcome-feature">' + icon('i-database') + '数据互通</span>' +
+        '</div>' +
+        '<div class="welcome-note"><strong>刚开始使用？</strong>本地没有数据时会自动载入示例数据；之后可随时在「数据管理」中导入自己的 <code>data/student.txt</code>，或直接手动录入。</div>' +
+      '</section>',
+
+      '<section class="welcome-slide" data-step="1" aria-hidden="true">' +
+        '<h3>和 C 后端共用一份数据</h3>' +
+        '<p>网页通过 <code>student.txt</code> 二进制文件与 C 程序交换数据，不需要修改 C 代码。</p>' +
+        '<div class="welcome-interop">' +
+          '<div class="welcome-interop-card">' +
+            '<span class="icon-badge icon-badge--indigo">' + icon('i-upload') + '</span>' +
+            '<strong>从 C 导入网页</strong>' +
+            '<p>在「数据管理」选择或拖入 <code>data/student.txt</code>，支持覆盖或合并导入。</p>' +
+          '</div>' +
+          '<span class="welcome-interop-arrow">⇄</span>' +
+          '<div class="welcome-interop-card">' +
+            '<span class="icon-badge icon-badge--teal">' + icon('i-download') + '</span>' +
+            '<strong>从网页导出给 C</strong>' +
+            '<p>导出 <code>student.txt</code>，替换 <code>data/student.txt</code> 后重新运行 C 程序即可。</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="welcome-format">每条记录 56 字节 · uint64 学号 · UTF-8 姓名（≤31 字节）· float 三科成绩</div>' +
+        '<div class="welcome-note">建议在替换 <code>data/student.txt</code> 前先备份原文件，避免误操作。</div>' +
+      '</section>',
+
+      '<section class="welcome-slide" data-step="2" aria-hidden="true">' +
+        '<h3>三步开始管理成绩</h3>' +
+        '<p>整个流程和 C 控制台菜单一一对应，只是换成了更直观的界面。</p>' +
+        '<div class="welcome-start-list">' +
+          '<div class="welcome-start-item"><span class="welcome-start-no">1</span><div><strong>导入或录入学生</strong><p>导入 C 程序的 <code>student.txt</code>，或点击右上角「添加学生」手动录入学号、姓名和三科成绩。</p></div></div>' +
+          '<div class="welcome-start-item"><span class="welcome-start-no">2</span><div><strong>管理成绩与查看分析</strong><p>搜索、筛选、排序、编辑成绩；在「成绩分析」中查看科目对比、分数段和总分排名。</p></div></div>' +
+          '<div class="welcome-start-item"><span class="welcome-start-no">3</span><div><strong>导出给 C 程序</strong><p>修改完成后导出 <code>student.txt</code>，替换项目中的 <code>data/student.txt</code>，C 程序启动时会自动加载。</p></div></div>' +
+        '</div>' +
+        '<div class="welcome-note">修改会自动保存在浏览器中；按 <strong>Ctrl / Cmd + K</strong> 可快速聚焦搜索框。</div>' +
+      '</section>',
+
+      '<section class="welcome-slide" data-step="3" aria-hidden="true">' +
+        '<h3>从哪里开始？</h3>' +
+        '<p>选择一个起点即可进入系统。之后随时可以在侧边栏「使用说明」中重新打开这份引导。</p>' +
+        '<div class="welcome-choices">' +
+          '<button type="button" class="welcome-choice welcome-choice--primary" data-welcome-action="import">' +
+            '<span class="welcome-choice-icon">' + icon('i-upload') + '</span>' +
+            '<strong>导入我的数据</strong>' +
+            '<span>选择 C 程序的 data/student.txt</span>' +
+          '</button>' +
+          '<button type="button" class="welcome-choice" data-welcome-action="demo">' +
+            '<span class="welcome-choice-icon">' + icon('i-sparkles') + '</span>' +
+            '<strong>先浏览当前数据</strong>' +
+            '<span>查看已有的学生记录</span>' +
+          '</button>' +
+          '<button type="button" class="welcome-choice" data-welcome-action="guide">' +
+            '<span class="welcome-choice-icon">' + icon('i-info') + '</span>' +
+            '<strong>查看完整说明</strong>' +
+            '<span>打开使用说明页面</span>' +
+          '</button>' +
+        '</div>' +
+      '</section>'
+    ];
+
+    var dots = [0, 1, 2, 3].map(function (index) {
+      return '<button type="button" class="welcome-dot' + (index === 0 ? ' is-active' : '') +
+        '" data-step="' + index + '" aria-label="第 ' + (index + 1) + ' 步">' + (index + 1) + '</button>';
+    }).join('');
+
+    var body = '<div class="welcome-progress" aria-label="引导进度">' + dots + '</div>' +
+      '<div class="welcome-slides">' + slides.join('') + '</div>';
+
+    var footer = '<button type="button" class="btn btn-ghost" data-role="skip">跳过引导</button>' +
+      '<div class="welcome-nav">' +
+        '<button type="button" class="btn btn-ghost" data-role="prev" disabled>上一步</button>' +
+        '<button type="button" class="btn btn-primary" data-role="next" data-autofocus>下一步</button>' +
+      '</div>';
+
+    openModal({
+      title: '第一次使用',
+      subtitle: '3 分钟了解界面、数据与 C 后端互通',
+      icon: icon('i-sparkles'),
+      size: 'welcome',
+      body: body,
+      footer: footer,
+      onClose: markOnboarded,
+      onMount: function (element, close) {
+        var slideElements = $$('.welcome-slide', element);
+        var dotElements = $$('.welcome-dot', element);
+        var prevButton = element.querySelector('[data-role="prev"]');
+        var nextButton = element.querySelector('[data-role="next"]');
+        var skipButton = element.querySelector('[data-role="skip"]');
+
+        function showStep(index) {
+          step = Math.max(0, Math.min(index, slideElements.length - 1));
+          slideElements.forEach(function (slide, slideIndex) {
+            slide.classList.toggle('is-active', slideIndex === step);
+            slide.setAttribute('aria-hidden', slideIndex === step ? 'false' : 'true');
+          });
+          dotElements.forEach(function (dot, dotIndex) {
+            dot.classList.toggle('is-active', dotIndex === step);
+            dot.classList.toggle('is-done', dotIndex < step);
+          });
+          prevButton.disabled = step === 0;
+          nextButton.textContent = step === slideElements.length - 1 ? '进入系统' : '下一步';
+        }
+
+        function finish(action) {
+          markOnboarded();
+          close();
+          if (action === 'import') {
+            openBinaryPicker();
+          } else if (action === 'guide') {
+            navigate('guide');
+          } else {
+            navigate('dashboard');
+          }
+        }
+
+        prevButton.addEventListener('click', function () {
+          showStep(step - 1);
+        });
+        nextButton.addEventListener('click', function () {
+          if (step === slideElements.length - 1) {
+            finish('demo');
+          } else {
+            showStep(step + 1);
+          }
+        });
+        skipButton.addEventListener('click', function () {
+          markOnboarded();
+          close();
+        });
+        dotElements.forEach(function (dot) {
+          dot.addEventListener('click', function () {
+            showStep(Number(dot.getAttribute('data-step')));
+          });
+        });
+        element.addEventListener('click', function (event) {
+          var choice = event.target.closest('[data-welcome-action]');
+          if (!choice) return;
+          finish(choice.getAttribute('data-welcome-action'));
+        });
+
+        showStep(0);
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
    * 渲染：侧边栏与提示条
    * ------------------------------------------------------------------ */
 
@@ -317,7 +613,14 @@
     renderStudents();
     renderAnalytics(stats);
     renderData();
+    renderGuideSummary();
     checkStorageWarning();
+  }
+
+  function renderGuideSummary() {
+    var element = $('#guide-data-summary');
+    if (!element) return;
+    element.textContent = (store.demo ? '示例数据' : '本地数据') + ' · ' + store.students.length + ' 名学生';
   }
 
   function renderSidebar() {
@@ -850,6 +1153,12 @@
     if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
 
     document.addEventListener('click', function (event) {
+      var openWelcome = event.target.closest('[data-open-welcome]');
+      if (openWelcome) {
+        event.preventDefault();
+        openWelcomeWizard();
+        return;
+      }
       var goto = event.target.closest('[data-goto]');
       if (goto) {
         event.preventDefault();
@@ -962,6 +1271,8 @@
     if (importBinary) importBinary.addEventListener('click', function () { $('#file-binary').click(); });
     var importJson = $('#btn-import-json');
     if (importJson) importJson.addEventListener('click', function () { $('#file-json').click(); });
+    var guideImport = $('#btn-guide-import');
+    if (guideImport) guideImport.addEventListener('click', openBinaryPicker);
 
     var fileBinary = $('#file-binary');
     if (fileBinary) {

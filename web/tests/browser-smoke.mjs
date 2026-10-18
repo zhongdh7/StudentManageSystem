@@ -251,6 +251,68 @@ try {
 
   fs.mkdirSync(screenshotDir, { recursive: true });
 
+  /* ---------------- 首次使用引导 ---------------- */
+  console.log('\n[0] 首次使用引导');
+  await waitFor(cdp, `document.querySelector('.modal--welcome') !== null`, 6000, '首次引导弹窗');
+  check('首次访问自动打开引导弹窗', true);
+  check('引导包含 4 个步骤', await evaluate(cdp, `document.querySelectorAll('.welcome-dot').length === 4`));
+  check('第 1 步标题正确', await evaluate(cdp, `document.querySelector('.welcome-slide.is-active h3').textContent === '欢迎使用学籍云'`));
+  check('引导打开时背景不可交互', await evaluate(cdp, `document.querySelector('.app').hasAttribute('inert')`));
+  await screenshot(cdp, '00-welcome');
+  await evaluate(cdp, `document.querySelector('[data-role="next"]').click(); true`);
+  await waitFor(cdp, `document.querySelector('.welcome-slide.is-active').getAttribute('data-step') === '1'`, 2000, '引导第二步');
+  check('可以切换到第 2 步', true);
+  await screenshot(cdp, '00-welcome-2');
+  await evaluate(cdp, `document.querySelector('[data-role="next"]').click(); true`);
+  await screenshot(cdp, '00-welcome-3');
+  await evaluate(cdp, `document.querySelector('[data-role="next"]').click(); true`);
+  await waitFor(cdp, `document.querySelector('.welcome-slide.is-active').getAttribute('data-step') === '3'`, 2000, '引导最后一步');
+  check('最后一步显示进入系统的选项', await evaluate(cdp, `document.querySelectorAll('[data-welcome-action]').length === 3`));
+  check('最后一步按钮文案为进入系统', await evaluate(cdp, `document.querySelector('[data-role="next"]').textContent === '进入系统'`));
+  await screenshot(cdp, '00-welcome-start');
+  await evaluate(cdp, `document.querySelector('[data-welcome-action="demo"]').click(); true`);
+  await waitFor(cdp, `!document.querySelector('.modal--welcome')`, 3000, '完成引导');
+  check('完成后记录已引导状态', await evaluate(cdp, `localStorage.getItem('sms.onboarded.v1') === '1'`));
+  check('关闭后背景恢复可交互', await evaluate(cdp, `!document.querySelector('.app').hasAttribute('inert')`));
+
+  /* ---------------- 侧边栏拖动伸缩 ---------------- */
+  console.log('\n[0.5] 侧边栏拖动伸缩');
+  check('默认侧边栏宽度为 254px', await evaluate(cdp, `Math.round(document.getElementById('sidebar').getBoundingClientRect().width) === 254`));
+  const resizerPoint = await evaluate(cdp, `(function () {
+    var rect = document.getElementById('sidebar-resizer').getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: Math.min(window.innerHeight / 2, rect.y + rect.height / 2) };
+  })()`);
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: resizerPoint.x, y: resizerPoint.y, button: 'left', buttons: 1, clickCount: 1 });
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: resizerPoint.x + 80, y: resizerPoint.y, button: 'left', buttons: 1 });
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: resizerPoint.x + 80, y: resizerPoint.y, button: 'left', buttons: 0, clickCount: 1 });
+  await sleep(150);
+  check('鼠标拖动可以加宽侧边栏', await evaluate(cdp, `Math.round(document.getElementById('sidebar').getBoundingClientRect().width) === 334`),
+    String(await evaluate(cdp, `Math.round(document.getElementById('sidebar').getBoundingClientRect().width)`)));
+  check('侧边栏宽度已持久化', await evaluate(cdp, `localStorage.getItem('sms.sidebar.width.v1') === '334'`));
+  await screenshot(cdp, '12-sidebar-resized');
+  await cdp.send('Page.reload');
+  await waitFor(cdp, `document.getElementById('dash-stats') && document.getElementById('dash-stats').children.length === 4`, 10000, '刷新页面');
+  await sleep(200);
+  check('刷新后侧边栏宽度保持', await evaluate(cdp, `Math.round(document.getElementById('sidebar').getBoundingClientRect().width) === 334`));
+  await evaluate(cdp, `document.getElementById('sidebar-resizer').dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); true`);
+  await sleep(100);
+  check('双击恢复默认宽度', await evaluate(cdp, `Math.round(document.getElementById('sidebar').getBoundingClientRect().width) === 254`));
+  await evaluate(cdp, `(function () {
+    var resizer = document.getElementById('sidebar-resizer');
+    resizer.focus();
+    resizer.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    return true;
+  })()`);
+  await sleep(100);
+  check('键盘方向键可以微调宽度', await evaluate(cdp, `Math.round(document.getElementById('sidebar').getBoundingClientRect().width) === 246`));
+  await evaluate(cdp, `(function () {
+    var resizer = document.getElementById('sidebar-resizer');
+    resizer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    return true;
+  })()`);
+  await sleep(100);
+  check('Home 键恢复默认宽度', await evaluate(cdp, `Math.round(document.getElementById('sidebar').getBoundingClientRect().width) === 254`));
+
   /* ---------------- 初始状态 ---------------- */
   console.log('\n[1] 初始加载与数据看板');
   check('页面标题正确', (await evaluate(cdp, 'document.title')).includes('学籍云'));
@@ -381,7 +443,12 @@ try {
   /* ---------------- 导入 student.txt ---------------- */
   console.log('\n[4] 导入 C 后端 student.txt');
   await gotoView(cdp, 'data');
-  const binaryBase64 = fs.readFileSync(path.join(projectRoot, 'data', 'student.txt')).toString('base64');
+  const cFileBuffer = fs.readFileSync(path.join(projectRoot, 'data', 'student.txt'));
+  const cFileDecoded = C.decodeBinary(cFileBuffer);
+  const cFileCount = cFileDecoded.students.length;
+  const cFileNumbers = cFileDecoded.students.map((student) => student.number).join(',');
+  const cFileNames = cFileDecoded.students.map((student) => student.name).join(',');
+  const binaryBase64 = cFileBuffer.toString('base64');
   await evaluate(cdp, `
     (async function () {
       var bytes = Uint8Array.from(atob('${binaryBase64}'), function (character) { return character.charCodeAt(0); });
@@ -395,13 +462,14 @@ try {
     })()
   `, true);
   await waitFor(cdp, `document.querySelector('.modal-backdrop') !== null`, 4000, '打开导入弹窗');
-  check('导入弹窗识别 3 条记录', await evaluate(cdp, `document.querySelector('.import-file div span').textContent.includes('3 条有效记录')`));
+  check('导入弹窗识别正确记录数', await evaluate(cdp,
+    `document.querySelector('.import-file div span').textContent.includes('${cFileCount} 条有效记录')`));
   await screenshot(cdp, '09-import-dialog');
   await evaluate(cdp, `document.querySelector('.modal-foot [data-role="confirm"]').click(); true`);
-  await waitFor(cdp, `JSON.parse(localStorage.getItem('sms.students.v1')).students.length === 3`, 4000, '应用导入');
+  await waitFor(cdp, `JSON.parse(localStorage.getItem('sms.students.v1')).students.length === ${cFileCount}`, 4000, '应用导入');
   const importedNumbers = await evaluate(cdp, `JSON.parse(localStorage.getItem('sms.students.v1')).students.map(function (student) { return student.number; }).join(',')`);
-  check('导入后记录为 C 文件中的 2,1,3', importedNumbers === '2,1,3', importedNumbers);
-  check('导入后侧边栏计数为 3', await evaluate(cdp, `document.getElementById('nav-count').textContent === '3'`));
+  check('导入后记录与源文件一致', importedNumbers === cFileNumbers, importedNumbers);
+  check('导入后侧边栏计数正确', await evaluate(cdp, `document.getElementById('nav-count').textContent === '${cFileCount}'`));
 
   /* ---------------- 导出 student.txt ---------------- */
   console.log('\n[5] 导出 student.txt 并校验二进制');
@@ -423,10 +491,10 @@ try {
   }
   check('导出的 student.txt 存在', fs.existsSync(exportedPath));
   const exportedBytes = fs.readFileSync(exportedPath);
-  check('导出文件大小为 3 × 56 字节', exportedBytes.length === 3 * C.RECORD_SIZE);
+  check('导出文件大小与记录数一致', exportedBytes.length === cFileCount * C.RECORD_SIZE);
   const decodedExport = C.decodeBinary(exportedBytes);
-  check('导出文件可被解析且记录正确', decodedExport.students.length === 3 &&
-    decodedExport.students.map((student) => student.name).join(',') === 'yy,hw,what');
+  check('导出文件可被解析且记录正确', decodedExport.students.length === cFileCount &&
+    decodedExport.students.map((student) => student.name).join(',') === cFileNames);
 
   /* ---------------- 恢复示例数据 ---------------- */
   console.log('\n[6] 载入示例数据、主题与截图');
@@ -440,6 +508,18 @@ try {
   await screenshot(cdp, '04-analytics');
   await gotoView(cdp, 'data');
   await screenshot(cdp, '05-data');
+
+  console.log('\n[6.5] 使用说明页面');
+  await gotoView(cdp, 'guide');
+  check('使用说明页面激活', await evaluate(cdp, `document.getElementById('view-guide').classList.contains('is-active')`));
+  check('使用说明包含 3 个步骤卡片', await evaluate(cdp, `document.querySelectorAll('#view-guide .guide-step').length === 3`));
+  check('使用说明数据摘要正确', await evaluate(cdp, `document.getElementById('guide-data-summary').textContent.includes('12 名学生')`));
+  await screenshot(cdp, '10-guide');
+  await evaluate(cdp, `document.querySelector('[data-open-welcome]').click(); true`);
+  await waitFor(cdp, `document.querySelector('.modal--welcome') !== null`, 3000, '重新打开引导');
+  check('可以从使用说明重新打开引导', true);
+  await evaluate(cdp, `document.querySelector('[data-role="skip"]').click(); true`);
+  await waitFor(cdp, `!document.querySelector('.modal--welcome')`, 3000, '关闭重新打开的引导');
 
   await gotoView(cdp, 'dashboard');
   await evaluate(cdp, `document.getElementById('theme-toggle').click(); true`);
@@ -467,6 +547,8 @@ try {
   await gotoView(cdp, 'students');
   check('移动端学生表切换为卡片布局', await evaluate(cdp,
     `getComputedStyle(document.querySelector('#student-table thead')).display === 'none' && getComputedStyle(document.querySelector('#student-table-body tr')).display === 'grid'`));
+  check('移动端隐藏侧边栏拖拽手柄', await evaluate(cdp,
+    `getComputedStyle(document.getElementById('sidebar-resizer')).display === 'none'`));
   check('移动端显示排序控件', await evaluate(cdp,
     `getComputedStyle(document.getElementById('student-sort').closest('.sort-wrap')).display !== 'none'`));
   await evaluate(cdp, `
@@ -486,6 +568,11 @@ try {
   await evaluate(cdp, `document.getElementById('sidebar-scrim').click(); true`);
   check('移动端关闭侧边栏后再次移出焦点顺序', await evaluate(cdp, `document.getElementById('sidebar').hasAttribute('inert')`));
 
+  await gotoView(cdp, 'guide');
+  check('移动端使用说明为单列布局', await evaluate(cdp,
+    `getComputedStyle(document.querySelector('.guide-steps-grid')).gridTemplateColumns.split(' ').length === 1`));
+  await screenshot(cdp, '11-mobile-guide');
+
   await cdp.send('Emulation.setDeviceMetricsOverride', {
     width: 1440,
     height: 1000,
@@ -498,6 +585,11 @@ try {
   const fileUrl = 'file:///' + path.join(webRoot, 'index.html').replace(/\\/g, '/');
   await cdp.send('Page.navigate', { url: fileUrl });
   await waitFor(cdp, `document.getElementById('dash-stats') && document.getElementById('dash-stats').children.length === 4`, 10000, 'file:// 页面初始化');
+  await sleep(700);
+  if (await evaluate(cdp, `!!document.querySelector('.modal--welcome')`)) {
+    await evaluate(cdp, `document.querySelector('[data-role="skip"]').click(); true`);
+    await waitFor(cdp, `!document.querySelector('.modal--welcome')`, 3000, '关闭 file:// 引导');
+  }
   check('file:// 方式可正常加载界面', true);
   check('file:// 方式可渲染学生表格', await evaluate(cdp, `document.querySelectorAll('#student-table-body tr').length === 9`));
   check('file:// 下本地存储可用', await evaluate(cdp, `document.getElementById('storage-label').textContent !== '仅内存模式'`));

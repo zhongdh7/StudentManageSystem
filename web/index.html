@@ -85,6 +85,10 @@
           <span class="nav-icon"><svg class="icon"><use href="#i-database"></use></svg></span>
           <span class="nav-text">数据管理</span>
         </button>
+        <button type="button" class="nav-item" data-view="guide">
+          <span class="nav-icon"><svg class="icon"><use href="#i-info"></use></svg></span>
+          <span class="nav-text">使用说明</span>
+        </button>
       </nav>
 
       <div class="side-card">
@@ -107,6 +111,9 @@
         </button>
       </div>
     </aside>
+    <div class="sidebar-resizer" id="sidebar-resizer" role="separator" aria-orientation="vertical"
+      aria-label="调整侧边栏宽度" aria-valuemin="208" aria-valuemax="360" aria-valuenow="254"
+      tabindex="0" title="拖动调整侧边栏宽度，双击恢复默认"></div>
     <div class="sidebar-scrim" id="sidebar-scrim" aria-hidden="true"></div>
 
     <!-- 主区域 -------------------------------------------------------- -->
@@ -433,6 +440,165 @@
 
           <input type="file" id="file-binary" accept=".txt,.bin,.dat" hidden>
           <input type="file" id="file-json" accept=".json,application/json" hidden>
+        </section>
+
+        <!-- 使用说明 -------------------------------------------------- -->
+        <section class="view" id="view-guide" data-view="guide" aria-label="使用说明">
+          <div class="guide-hero">
+            <div class="guide-hero-copy">
+              <span class="guide-badge"><svg class="icon"><use href="#i-sparkles"></use></svg>第一次使用指南</span>
+              <h2>三分钟了解学籍云</h2>
+              <p>这是「高校学生成绩管理系统」的 Web 界面，与 C 语言控制台程序共用同一份数据。按下面的步骤导入数据、管理成绩，再把结果导回 C 程序即可。</p>
+              <div class="guide-hero-actions">
+                <button type="button" class="btn btn-primary" data-open-welcome>
+                  <svg class="icon"><use href="#i-sparkles"></use></svg>
+                  <span>重新观看引导</span>
+                </button>
+                <button type="button" class="btn btn-ghost" id="btn-guide-import">
+                  <svg class="icon"><use href="#i-upload"></use></svg>
+                  <span>导入 student.txt</span>
+                </button>
+              </div>
+              <div class="guide-meta">
+                <span class="pill" id="guide-data-summary">示例数据 · 0 名学生</span>
+                <span class="guide-meta-text">数据自动保存在浏览器，可随时导出备份</span>
+              </div>
+            </div>
+            <div class="guide-hero-art" aria-hidden="true">
+              <span class="guide-art-ring"></span>
+              <span class="guide-art-icon"><svg class="icon"><use href="#i-graduation"></use></svg></span>
+              <span class="guide-art-chip guide-art-chip--1">56 B / 条</span>
+              <span class="guide-art-chip guide-art-chip--2">student.txt</span>
+            </div>
+          </div>
+
+          <div class="guide-steps-grid">
+            <article class="card guide-step">
+              <span class="guide-step-no">01</span>
+              <span class="guide-step-icon icon-badge icon-badge--indigo"><svg class="icon"><use href="#i-upload"></use></svg></span>
+              <h3>导入或录入学生</h3>
+              <p>从 C 程序的 <code>data/</code> 目录导入 <code>student.txt</code>；也可以点击右上角「添加学生」手动录入。</p>
+              <button type="button" class="link-btn" data-goto="data">前往数据管理</button>
+            </article>
+            <article class="card guide-step">
+              <span class="guide-step-no">02</span>
+              <span class="guide-step-icon icon-badge icon-badge--amber"><svg class="icon"><use href="#i-users"></use></svg></span>
+              <h3>管理成绩与查看分析</h3>
+              <p>在「学生管理」中搜索、筛选、排序、编辑成绩；在「成绩分析」中查看科目对比、分数段和排名。</p>
+              <button type="button" class="link-btn" data-goto="students">打开学生管理</button>
+            </article>
+            <article class="card guide-step">
+              <span class="guide-step-no">03</span>
+              <span class="guide-step-icon icon-badge icon-badge--teal"><svg class="icon"><use href="#i-download"></use></svg></span>
+              <h3>导出给 C 程序</h3>
+              <p>修改完成后导出 <code>student.txt</code>，替换项目中的 <code>data/student.txt</code>，C 程序即可读取新数据。</p>
+              <button type="button" class="link-btn" data-goto="data">打开导出面板</button>
+            </article>
+          </div>
+
+          <div class="guide-grid">
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <h2>Web 与 C 后端如何互通</h2>
+                  <p>通过同一个 56 字节二进制文件交换数据</p>
+                </div>
+              </div>
+              <div class="guide-flow">
+                <div class="guide-flow-item">
+                  <span class="icon-badge icon-badge--indigo"><svg class="icon"><use href="#i-upload"></use></svg></span>
+                  <div><strong>从 C 导入网页</strong><p>在「数据管理」选择或拖入 <code>data/student.txt</code>，可覆盖或合并导入。</p></div>
+                </div>
+                <span class="guide-flow-arrow">⇄</span>
+                <div class="guide-flow-item">
+                  <span class="icon-badge icon-badge--teal"><svg class="icon"><use href="#i-download"></use></svg></span>
+                  <div><strong>从网页导出给 C</strong><p>导出 <code>student.txt</code> 并替换 <code>data/student.txt</code>，建议先备份原文件。</p></div>
+                </div>
+              </div>
+              <pre class="code-block"><code>typedef struct Student {
+    uint64_t number;    // 8 B   学号
+    char     name[32];  // 32 B  姓名（UTF-8）
+    float    chinese;   // 4 B   语文
+    float    math;      // 4 B   数学
+    float    english;   // 4 B   英语
+};                      // 共 56 B / 条</code></pre>
+              <p class="hint">C 程序从项目根目录使用相对路径 <code>./data/student.txt</code>，请从根目录运行。</p>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <h2>常见问题</h2>
+                  <p>第一次使用最容易遇到的几个问题</p>
+                </div>
+              </div>
+              <details class="faq-item" open>
+                <summary>网页会直接修改 C 程序的文件吗？</summary>
+                <p>不会。网页运行在浏览器中，只能通过导入 / 导出文件交换数据；需要手动把导出的 <code>student.txt</code> 放回 <code>data/</code> 目录。</p>
+              </details>
+              <details class="faq-item">
+                <summary>数据保存在哪里？会丢吗？</summary>
+                <p>保存在当前浏览器的 <code>localStorage</code> 中，刷新不会丢失；清除浏览器站点数据会丢失，建议定期导出备份。</p>
+              </details>
+              <details class="faq-item">
+                <summary>为什么导入时有些记录被跳过？</summary>
+                <p>网页会校验学号唯一、姓名不超过 31 个 UTF-8 字节、成绩在 0–100 之间。不符合规则的记录会被跳过并在导入弹窗中列出，导入前建议先备份。</p>
+              </details>
+              <details class="faq-item">
+                <summary>怎么换电脑或换浏览器？</summary>
+                <p>在旧环境导出 JSON 或 <code>student.txt</code>，在新环境中导入即可；也可以把 <code>student.txt</code> 交给 C 程序继续使用。</p>
+              </details>
+            </article>
+          </div>
+
+          <div class="guide-grid">
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <h2>界面速览</h2>
+                  <p>点击直接跳转到对应功能</p>
+                </div>
+              </div>
+              <div class="guide-links">
+                <button type="button" class="guide-link" data-goto="dashboard">
+                  <span class="guide-link-icon"><svg class="icon"><use href="#i-dashboard"></use></svg></span>
+                  <strong>数据看板</strong>
+                  <span>总体指标与排名</span>
+                </button>
+                <button type="button" class="guide-link" data-goto="students">
+                  <span class="guide-link-icon"><svg class="icon"><use href="#i-users"></use></svg></span>
+                  <strong>学生管理</strong>
+                  <span>增删改查与搜索</span>
+                </button>
+                <button type="button" class="guide-link" data-goto="analytics">
+                  <span class="guide-link-icon"><svg class="icon"><use href="#i-chart"></use></svg></span>
+                  <strong>成绩分析</strong>
+                  <span>科目对比与排行</span>
+                </button>
+                <button type="button" class="guide-link" data-goto="data">
+                  <span class="guide-link-icon"><svg class="icon"><use href="#i-database"></use></svg></span>
+                  <strong>数据管理</strong>
+                  <span>导入导出与备份</span>
+                </button>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="card-head">
+                <div>
+                  <h2>键盘与安全</h2>
+                  <p>更快的操作方式与数据提示</p>
+                </div>
+              </div>
+              <div class="shortcut-list">
+                <div><span class="shortcut-keys"><kbd>Ctrl</kbd><span>+</span><kbd>K</kbd></span><span>聚焦学生搜索框</span></div>
+                <div><span class="shortcut-keys"><kbd>Esc</kbd></span><span>关闭弹窗 / 收起侧边栏</span></div>
+                <div><span class="shortcut-keys"><kbd>Enter</kbd></span><span>在表单中提交</span></div>
+              </div>
+              <p class="hint">删除学生后，右下角提示条支持撤销；但如果刷新页面或学号已被重新添加，将无法恢复。建议定期在「数据管理」中导出备份。</p>
+              <p class="hint">侧边栏右边缘带有拖拽手柄：按住拖动可调整宽度，双击恢复默认；宽度会自动记忆。</p>
+            </article>
+          </div>
         </section>
       </main>
 

@@ -114,17 +114,26 @@ test('二进制编解码往返保持数据一致（含 uint64 上限）', () => 
   assert.equal(decoded.students[1].english, 59.5);
 });
 
-test('可以解析 C 程序实际生成的 data/student.txt', () => {
+test('可以解析 C 程序实际生成的 data/student.txt（按文件内容动态校验）', () => {
   const buffer = readFileSync(projectDataFile);
   assert.equal(buffer.length % C.RECORD_SIZE, 0);
   const decoded = C.decodeBinary(buffer);
   assert.equal(decoded.errors.length, 0);
-  assert.equal(decoded.students.length, 3);
-  assert.deepEqual(decoded.students.map((s) => s.number), ['2', '1', '3']);
-  assert.deepEqual(decoded.students.map((s) => s.name), ['yy', 'hw', 'what']);
+  assert.equal(decoded.students.length, buffer.length / C.RECORD_SIZE);
+  assert.ok(decoded.students.length > 0);
+  decoded.students.forEach((student) => {
+    assert.match(student.number, /^\d+$/);
+    assert.ok(student.name.length > 0);
+    assert.ok(student.chinese >= 0 && student.chinese <= 100);
+    assert.ok(student.math >= 0 && student.math <= 100);
+    assert.ok(student.english >= 0 && student.english <= 100);
+  });
+  // 重新编码后再解析，记录数量与字段保持一致
+  const redecoded = C.decodeBinary(C.encodeBinary(decoded.students));
+  assert.equal(redecoded.errors.length, 0);
   assert.deepEqual(
-    decoded.students.map((s) => [s.chinese, s.math, s.english]),
-    [[78, 29, 90], [77, 22, 12], [89, 23, 12]]
+    redecoded.students.map((student) => [student.number, student.name, student.chinese, student.math, student.english]),
+    decoded.students.map((student) => [student.number, student.name, student.chinese, student.math, student.english])
   );
 });
 

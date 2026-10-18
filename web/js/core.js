@@ -35,7 +35,9 @@
   var STORAGE_KEYS = {
     students: 'sms.students.v1',
     activity: 'sms.activity.v1',
-    theme: 'sms.theme.v1'
+    theme: 'sms.theme.v1',
+    onboarded: 'sms.onboarded.v1',
+    sidebarWidth: 'sms.sidebar.width.v1'
   };
 
   var ACTIVITY_TYPES = ['add', 'update', 'remove', 'restore', 'import', 'export', 'clear', 'demo'];

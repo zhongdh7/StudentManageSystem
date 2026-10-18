@@ -101,19 +101,21 @@ gcc -std=c11 -Wall -o StudentManageSystem.exe main.c Student.c ForwardList.c Stu
 
 ![Web 前端数据看板](web/screenshots/01-dashboard-light.png)
 
-功能与 C 控制台菜单一一对应，并额外提供数据看板、成绩分析、深色主题和移动端布局：
+功能与 C 控制台菜单一一对应，并额外提供首次使用引导、使用说明、数据看板、成绩分析、深色主题和移动端布局：
 
 - 添加 / 编辑 / 删除学生，按学号或姓名搜索，按成绩筛选、排序、分页；
 - 成绩分布、及格率、科目对比与总分排名图表；
 - 导入 C 程序生成的 `data/student.txt`，或把网页数据导出为同格式文件；
 - 支持 JSON / CSV 备份，数据自动保存在浏览器 localStorage；
+- 左侧边栏支持鼠标拖动调整宽度（双击恢复默认，宽度自动记忆）；
 - 姓名按 UTF-8 限制 31 字节、学号支持完整 uint64、成绩 0–100，与 C 结构体保持一致。
 
 ### 快速开始
 
 1. 双击打开 `web/index.html`（推荐 Chrome / Edge）。
-2. 首次打开会载入示例数据，可在「数据管理」中导入自己的 `data/student.txt`。
-3. 修改后点击「导出 student.txt」，替换项目中的 `data/student.txt`，C 程序即可读取新数据。
+2. 首次打开会自动弹出 4 步新手引导，介绍界面与数据互通方式；完成后可从侧边栏「使用说明」随时重新查看。
+3. 首次打开会载入示例数据，可在「数据管理」中导入自己的 `data/student.txt`。
+4. 修改后点击「导出 student.txt」，替换项目中的 `data/student.txt`，C 程序即可读取新数据。
 
 > 前端通过文件导入/导出与 C 后端交换数据，不会直接修改 C 代码。完整说明、二进制格式与测试方法见
 > [`web/README.md`](web/README.md)。

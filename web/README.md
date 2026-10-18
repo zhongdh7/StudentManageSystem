@@ -6,6 +6,8 @@
 - 覆盖 C 后端菜单中的全部功能：添加、打印（列表）、删除、查找、修改、保存。
 - 与 C 程序的 `data/student.txt` **二进制格式完全互通**：网页可以导入 C 生成的数据文件，也可以导出同名文件给 C 程序读取。
 - 数据看板、成绩分析、深色主题、移动端响应式、键盘快捷键。
+- 首次访问自动弹出 4 步新手引导；侧边栏「使用说明」页面可随时重新查看。
+- 侧边栏支持**鼠标拖动调整宽度**：拖动右边缘伸缩，双击恢复默认，宽度自动记忆。
 
 ![数据看板](screenshots/01-dashboard-light.png)
 
@@ -24,6 +26,22 @@ python -m http.server 8000 --directory web
 # 然后访问 http://localhost:8000
 ```
 
+## 第一次使用
+
+首次打开页面时，会自动弹出 4 步新手引导：
+
+1. 认识界面与示例数据；
+2. 了解 Web 与 C 后端如何通过 `student.txt` 互通；
+3. 掌握导入 / 管理 / 导出三步流程；
+4. 选择起点：导入 `data/student.txt`、先浏览示例数据，或查看完整说明。
+
+完成或关闭引导后不会再自动弹出；随时可以点击侧边栏「使用说明」重新查看，
+或在该页面点击「重新观看引导」。
+
+| 首次使用引导 | 使用说明页面 |
+| :---: | :---: |
+| ![首次使用引导](screenshots/00-welcome.png) | ![使用说明](screenshots/10-guide.png) |
+
 ## 功能对照
 
 | C 控制台菜单 | Web 界面 |
@@ -35,7 +53,7 @@ python -m http.server 8000 --directory web
 | 5. 修改学生信息 | 表格行内编辑，可改学号、姓名与三科成绩 |
 | 6. 保存学生信息 | 每次修改自动写入 `localStorage`；可导出 `student.txt` / JSON / CSV |
 | 0. 退出系统 | 关闭页面即可，数据已自动保存 |
-| —— | 额外提供：数据看板、成绩分析、深色主题、示例数据 |
+| —— | 额外提供：新手引导、使用说明、数据看板、成绩分析、深色主题、示例数据 |
 
 ## 与 C 程序共用数据
 
@@ -99,7 +117,7 @@ web/
 ├── screenshots/               界面截图（由端到端测试生成）
 ├── tests/
 │   ├── core.test.mjs          core.js 单元测试（23 项）
-│   └── browser-smoke.mjs      Edge headless 端到端测试（44 项，生成截图）
+│   └── browser-smoke.mjs      Edge headless 端到端测试（66 项，生成截图）
 └── README.md
 ```
 
@@ -110,6 +128,8 @@ web/
 | `sms.students.v1` | 学生记录、示例数据标记、上次保存时间 |
 | `sms.activity.v1` | 最近 30 条操作记录 |
 | `sms.theme.v1` | 浅色 / 深色主题偏好 |
+| `sms.onboarded.v1` | 是否已完成首次使用引导 |
+| `sms.sidebar.width.v1` | 侧边栏宽度（拖拽后自动记忆） |
 
 数据默认保存在当前浏览器中。清除浏览器站点数据会同时清除学生记录，
 请定期通过「数据管理」导出 `student.txt` 或 JSON 备份。
@@ -137,14 +157,19 @@ node web/tests/browser-smoke.mjs
 - Windows + 已安装 Microsoft Edge（可用 `EDGE_PATH` 环境变量指定路径）；
 - Node.js 22+（使用内置 `WebSocket`）。
 
-测试会启动 headless Edge，逐项验证页面加载、增删改查、搜索排序分页、
+测试会启动 headless Edge，逐项验证首次使用引导、使用说明页面、侧边栏拖动伸缩、页面加载、增删改查、搜索排序分页、
 二进制导入导出（含导出文件字节校验）、深色主题、移动端布局、焦点管理与
 `file://` 打开，并重新生成 `screenshots/`；运行期间若出现任何 JavaScript 错误会判定失败。
 
-> 注意：测试会重写 `web/screenshots/` 下的截图，并临时启动一个本地静态服务器（端口 8137）
-> 与 headless Edge（调试端口 9333）。
+> 注意：测试会重写 `web/screenshots/` 下的截图，并临时启动一个本地静态服务器
+> 与 headless Edge。默认端口为 8137 / 9333，可通过 `SMS_TEST_HTTP_PORT` 和
+> `SMS_TEST_DEBUG_PORT` 环境变量覆盖。
 
 ## 截图
+
+| 首次使用引导 | 选择起点 |
+| :---: | :---: |
+| ![首次使用引导](screenshots/00-welcome.png) | ![选择起点](screenshots/00-welcome-start.png) |
 
 | 数据看板 | 学生管理 |
 | :---: | :---: |
@@ -158,15 +183,23 @@ node web/tests/browser-smoke.mjs
 | :---: | :---: |
 | ![数据管理](screenshots/05-data.png) | ![深色主题](screenshots/06-dashboard-dark.png) |
 
-| 移动端看板 | 移动端学生管理 |
+| 使用说明 | 移动端看板 |
 | :---: | :---: |
-| ![移动端看板](screenshots/07-mobile-dashboard.png) | ![移动端学生管理](screenshots/08-mobile-students.png) |
+| ![使用说明](screenshots/10-guide.png) | ![移动端看板](screenshots/07-mobile-dashboard.png) |
+
+| 移动端学生管理 | 移动端使用说明 |
+| :---: | :---: |
+| ![移动端学生管理](screenshots/08-mobile-students.png) | ![移动端使用说明](screenshots/11-mobile-guide.png) |
+
+| 侧边栏拖动伸缩 | 导入数据 |
+| :---: | :---: |
+| ![侧边栏拖动伸缩](screenshots/12-sidebar-resized.png) | ![导入数据](screenshots/09-import-dialog.png) |
 
 ## 设计说明
 
 - **配色**：靛蓝主色 + 深色导航栏，成绩用绿 / 蓝 / 琥珀 / 红四档语义色；
-- **布局**：桌面端侧边栏 + 卡片栅格；`≤980px` 侧边栏收起为抽屉；`≤760px`
-  学生表格自动切换为卡片布局，并提供排序下拉框；
+- **布局**：桌面端侧边栏 + 卡片栅格；侧边栏右边缘可拖动伸缩（208–360px），
+  `≤980px` 侧边栏收起为抽屉；`≤760px` 学生表格自动切换为卡片布局，并提供排序下拉框；
 - **主题**：通过 CSS 变量实现浅色 / 深色主题，偏好保存在 `localStorage`；
 - **无障碍**：语义化标题与表格、`aria-label`、`aria-sort`、焦点环、
   `Esc` 关闭弹窗、`Ctrl / Cmd + K` 聚焦搜索框；
