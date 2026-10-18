@@ -182,7 +182,7 @@
               <div class="card-head">
                 <div>
                   <h2>最近操作</h2>
-                  <p>保存在浏览器本地的操作记录</p>
+                  <p>本次会话的操作记录</p>
                 </div>
                 <button type="button" class="link-btn" id="btn-clear-activity">清除</button>
               </div>
@@ -341,7 +341,7 @@
                 <strong>拖拽数据文件到这里</strong>
                 <p>或点击下方按钮选择文件</p>
                 <button type="button" class="btn btn-primary btn-sm" id="btn-import-binary">选择文件导入</button>
-                <span class="dropzone-hint">导入学生数据文件，数据仅保存在当前浏览器</span>
+                <span class="dropzone-hint">导入学生数据文件</span>
               </div>
               <div class="card-actions">
                 <button type="button" class="btn btn-ghost" id="btn-export-binary">
@@ -402,8 +402,8 @@
                 <div class="data-card-title">
                   <span class="icon-badge icon-badge--amber"><svg class="icon"><use href="#i-save"></use></svg></span>
                   <div>
-                    <h2>本地存储</h2>
-                    <p>自动保存，无需手动操作</p>
+                    <h2 id="data-storage-title">数据存储</h2>
+                    <p id="data-storage-sub">修改后自动保存</p>
                   </div>
                 </div>
               </div>
@@ -412,7 +412,7 @@
                 <div><span>存储占用</span><strong id="data-storage-size">—</strong></div>
                 <div><span>数据来源</span><strong id="data-demo-state">本地数据</strong></div>
               </div>
-              <p class="hint" id="data-storage-hint">数据会自动保存在当前浏览器中，清除浏览器数据会同时清除学生记录。</p>
+              <p class="hint" id="data-storage-hint">修改后会自动保存，建议定期导出备份。</p>
               <div class="card-actions">
                 <button type="button" class="btn btn-ghost" id="btn-load-demo">
                   <svg class="icon"><use href="#i-sparkles"></use></svg>
@@ -449,7 +449,7 @@
               </div>
               <div class="guide-meta">
                 <span class="pill" id="guide-data-summary">示例数据 · 0 名学生</span>
-                <span class="guide-meta-text">数据自动保存在浏览器，可随时导出备份</span>
+                <span class="guide-meta-text">数据自动保存，可随时导出备份</span>
               </div>
             </div>
             <div class="guide-hero-art" aria-hidden="true">
@@ -519,7 +519,7 @@
               </details>
               <details class="faq-item">
                 <summary>数据保存在哪里？会丢吗？</summary>
-                <p>保存在当前浏览器中，刷新不会丢失；清除浏览器数据会丢失，建议定期导出备份。</p>
+                <p>数据会自动保存；如果通过 C 后端启动，会写入 data/student.txt，建议定期导出备份。</p>
               </details>
               <details class="faq-item">
                 <summary>为什么导入时有些记录被跳过？</summary>
@@ -586,7 +586,7 @@
       <footer class="app-footer">
         <span>学籍云 · 高校学生成绩管理系统</span>
         <span class="footer-sep">·</span>
-        <span>数据自动保存在本地浏览器，请定期导出备份</span>
+        <span>数据自动保存，请定期导出备份</span>
       </footer>
     </div>
   </div>

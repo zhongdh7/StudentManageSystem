@@ -4,14 +4,14 @@
  * 纯 JavaScript 实现，不依赖任何第三方库。
  * 浏览器中通过全局对象 StudentCore 使用，Node.js 中通过 require 使用。
  *
- * 数据文件格式与 C 后端完全一致：
- *   typedef struct Student {
- *       uint64_t number;    // 偏移 0， 8 字节，小端序
- *       char     name[32];  // 偏移 8， 32 字节，UTF-8 + '\0' 填充
- *       float    chinese;   // 偏移 40，4 字节，小端序
- *       float    math;      // 偏移 44，4 字节，小端序
- *       float    english;   // 偏移 48，4 字节，小端序
- *   };                      // sizeof == 56（末尾 4 字节对齐填充）
+ * 数据文件格式：
+ *   uint64_t number;    // 偏移 0， 8 字节，小端序
+ *   char     name[64];  // 偏移 8， 64 字节，UTF-8 + '\0' 填充
+ *   float    chinese;   // 偏移 72，4 字节，小端序
+ *   float    math;      // 偏移 76，4 字节，小端序
+ *   float    english;   // 偏移 80，4 字节，小端序
+ *   // 4 字节对齐填充，记录总长 88 字节
+ * 旧版 56 字节记录仍可读取，导出时统一转换为 88 字节格式。
  */
 (function (root, factory) {
   'use strict';
@@ -27,9 +27,18 @@
    * 常量
    * ------------------------------------------------------------------ */
 
-  var RECORD_SIZE = 56;
-  var NAME_FIELD_SIZE = 32;
+  var RECORD_SIZE = 88;             // 8(学号) + 64(姓名) + 12(成绩) + 4(填充)
+  var NAME_FIELD_SIZE = 64;
   var MAX_NAME_BYTES = NAME_FIELD_SIZE - 1; // 需要保留结尾 '\0'
+  var NAME_OFFSET = 8;
+  var SCORE_OFFSET = NAME_OFFSET + NAME_FIELD_SIZE; // 72
+  var PADDING_SIZE = 4;
+
+  // 旧版 56 字节记录，仅用于兼容读取历史数据文件
+  var LEGACY_RECORD_SIZE = 56;
+  var LEGACY_NAME_FIELD_SIZE = 32;
+  var LEGACY_SCORE_OFFSET = 8 + LEGACY_NAME_FIELD_SIZE; // 40
+
   var MAX_UINT64 = 18446744073709551615n;
 
   var STORAGE_KEYS = {
@@ -169,7 +178,7 @@
     if (!name) {
       errors.name = '请输入姓名';
     } else if (utf8ByteLength(name) > MAX_NAME_BYTES) {
-      errors.name = '姓名过长，请控制在 10 个汉字（或 31 个英文字母）以内';
+      errors.name = '姓名过长，请控制在 21 个汉字（或 63 个英文字母）以内';
     } else if (/[\u0000-\u001f\u007f]/.test(name)) {
       errors.name = '姓名包含不支持的字符，请修改';
     } else {
@@ -402,12 +411,12 @@
         nameBytes = nameBytes.subarray(0, MAX_NAME_BYTES);
       }
       // 其余字节保持 0，等价于 C 中的 '\0' 填充
-      bytes.set(nameBytes, offset + 8);
+      bytes.set(nameBytes, offset + NAME_OFFSET);
 
-      view.setFloat32(offset + 40, Number(student.chinese), true);
-      view.setFloat32(offset + 44, Number(student.math), true);
-      view.setFloat32(offset + 48, Number(student.english), true);
-      // offset + 52 起 4 字节为对齐填充，保持 0
+      view.setFloat32(offset + SCORE_OFFSET, Number(student.chinese), true);
+      view.setFloat32(offset + SCORE_OFFSET + 4, Number(student.math), true);
+      view.setFloat32(offset + SCORE_OFFSET + 8, Number(student.english), true);
+      // offset + SCORE_OFFSET + 12 起 4 字节为对齐填充，保持 0
     });
 
     return new Uint8Array(buffer);
@@ -424,24 +433,40 @@
 
   /**
    * 解析 C 程序写出的 student.txt。
-   * @returns {{ students: object[], errors: {index: number, reason: string}[] }}
+   * 同时兼容新版 88 字节记录与旧版 56 字节记录。
+   * @returns {{ students: object[], errors: {index: number, reason: string}[], format: string }}
    */
   function decodeBinary(data) {
     var bytes = toUint8Array(data);
     if (!bytes) {
-      return { students: [], errors: [{ index: -1, reason: '无法识别的数据格式' }] };
+      return { students: [], errors: [{ index: -1, reason: '无法识别的数据格式' }], format: 'unknown' };
     }
     if (bytes.length === 0) {
-      return { students: [], errors: [{ index: -1, reason: '文件为空，没有可导入的记录' }] };
+      return { students: [], errors: [{ index: -1, reason: '文件为空，没有可导入的记录' }], format: 'unknown' };
     }
+
+    var format = 'new';
+    var recordSize = RECORD_SIZE;
+    var nameFieldSize = NAME_FIELD_SIZE;
+    var scoreOffset = SCORE_OFFSET;
+
     if (bytes.length % RECORD_SIZE !== 0) {
-      return {
-        students: [],
-        errors: [{
-          index: -1,
-          reason: '文件格式不正确（长度 ' + bytes.length + ' 字节），请选择有效的学生数据文件'
-        }]
-      };
+      if (bytes.length % LEGACY_RECORD_SIZE === 0) {
+        // 旧版 56 字节文件：姓名 32 字节，成绩从偏移 40 开始
+        format = 'legacy';
+        recordSize = LEGACY_RECORD_SIZE;
+        nameFieldSize = LEGACY_NAME_FIELD_SIZE;
+        scoreOffset = LEGACY_SCORE_OFFSET;
+      } else {
+        return {
+          students: [],
+          errors: [{
+            index: -1,
+            reason: '文件格式不正确（长度 ' + bytes.length + ' 字节），请选择有效的学生数据文件'
+          }],
+          format: 'unknown'
+        };
+      }
     }
 
     var view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -450,11 +475,11 @@
     var errors = [];
     var seen = new Set();
 
-    for (var offset = 0; offset < bytes.length; offset += RECORD_SIZE) {
-      var recordIndex = offset / RECORD_SIZE;
+    for (var offset = 0; offset < bytes.length; offset += recordSize) {
+      var recordIndex = offset / recordSize;
       var number = view.getBigUint64(offset, true).toString();
 
-      var nameBytes = bytes.subarray(offset + 8, offset + NAME_FIELD_SIZE + 8);
+      var nameBytes = bytes.subarray(offset + NAME_OFFSET, offset + NAME_OFFSET + nameFieldSize);
       var nulIndex = nameBytes.indexOf(0);
       var nameLength = nulIndex === -1 ? nameBytes.length : nulIndex;
       var name;
@@ -465,9 +490,9 @@
         continue;
       }
 
-      var chinese = view.getFloat32(offset + 40, true);
-      var math = view.getFloat32(offset + 44, true);
-      var english = view.getFloat32(offset + 48, true);
+      var chinese = view.getFloat32(offset + scoreOffset, true);
+      var math = view.getFloat32(offset + scoreOffset + 4, true);
+      var english = view.getFloat32(offset + scoreOffset + 8, true);
 
       if (!name) {
         errors.push({ index: recordIndex, reason: '姓名为空，已跳过' });
@@ -495,7 +520,7 @@
       students.push(result.value);
     }
 
-    return { students: students, errors: errors };
+    return { students: students, errors: errors, format: format };
   }
 
   /* ------------------------------------------------------------------ *
@@ -857,6 +882,9 @@
     RECORD_SIZE: RECORD_SIZE,
     NAME_FIELD_SIZE: NAME_FIELD_SIZE,
     MAX_NAME_BYTES: MAX_NAME_BYTES,
+    LEGACY_RECORD_SIZE: LEGACY_RECORD_SIZE,
+    LEGACY_NAME_FIELD_SIZE: LEGACY_NAME_FIELD_SIZE,
+    LEGACY_SCORE_OFFSET: LEGACY_SCORE_OFFSET,
     MAX_UINT64_STRING: MAX_UINT64.toString(),
     STORAGE_KEYS: STORAGE_KEYS,
     SUBJECTS: SUBJECTS,

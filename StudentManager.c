@@ -20,6 +20,13 @@
 
 #define DATA_DIRECTORY "data"
 #define DEFAULT_DATA_FILE "./data/student.txt"
+#define RECORD_PADDING_SIZE 4
+
+// 新版记录：8(学号) + 64(姓名) + 12(三科成绩) + 4(填充) = 88 字节
+#define STUDENT_RECORD_SIZE (sizeof(uint64_t) + STUDENT_NAME_SIZE + sizeof(float) * 3 + RECORD_PADDING_SIZE)
+// 旧版记录：8 + 32 + 12 + 4 = 56 字节，用于读取历史数据文件
+#define LEGACY_STUDENT_NAME_SIZE 32
+#define LEGACY_STUDENT_RECORD_SIZE (sizeof(uint64_t) + LEGACY_STUDENT_NAME_SIZE + sizeof(float) * 3 + RECORD_PADDING_SIZE)
 
 enum Option
 {
@@ -36,7 +43,9 @@ typedef enum Option Option;
 
 _Static_assert(sizeof(uint64_t) == 8, "数据文件要求 uint64_t 为 8 字节");
 _Static_assert(sizeof(float) == 4, "数据文件要求 float 为 4 字节");
-_Static_assert(STUDENT_NAME_SIZE == 32, "数据文件要求姓名字段为 32 字节");
+_Static_assert(STUDENT_NAME_SIZE == 64, "数据文件要求姓名字段为 64 字节");
+_Static_assert(STUDENT_RECORD_SIZE == 88, "新版数据记录应为 88 字节");
+_Static_assert(LEGACY_STUDENT_RECORD_SIZE == 56, "旧版数据记录应为 56 字节");
 
 /* ------------------------------------------------------------------ *
  * 输入辅助
@@ -185,7 +194,7 @@ static bool read_student_name(const char *prompt, char *name, size_t capacity)
         }
         if (strlen(text) >= capacity)
         {
-            printf("姓名过长，最多 10 个汉字（或 31 个英文字母）。\n");
+            printf("姓名过长，最多 21 个汉字（或 63 个英文字母）。\n");
             continue;
         }
 
@@ -259,8 +268,8 @@ static int create_empty_data_file(const char *filename)
 }
 
 /*
- * 数据文件固定为 56 字节/条：
- *   uint64 学号(8) + char 姓名(32) + float 语文(4) + 数学(4) + 英语(4) + 填充(4)
+ * 新版数据文件固定为 88 字节/条：
+ *   uint64 学号(8) + char 姓名(64) + float 语文(4) + 数学(4) + 英语(4) + 填充(4)
  * 逐字段读写，既不依赖结构体填充字节，也与 Web 前端格式保持兼容。
  */
 static int write_student(FILE *fp, const Student *stu)
@@ -276,7 +285,10 @@ static int write_student(FILE *fp, const Student *stu)
     uint32_t padding = 0;
 
     memset(name, 0, sizeof(name));
-    strncpy(name, stu->name, sizeof(name) - 1);
+    size_t name_length = strlen(stu->name);
+    if (name_length >= sizeof(name))
+        name_length = sizeof(name) - 1;
+    memcpy(name, stu->name, name_length);
 
     if (fwrite(&number, sizeof(number), 1, fp) != 1 ||
         fwrite(name, sizeof(name), 1, fp) != 1 ||
@@ -325,6 +337,58 @@ static int read_student(FILE *fp, Student *stu)
     stu->math = math;
     stu->english = english;
     return 1;
+}
+
+/*
+ * 读取旧版 56 字节记录（姓名 32 字节），用于自动迁移历史数据文件。
+ */
+static int read_student_legacy(FILE *fp, Student *stu)
+{
+    if (!fp || !stu)
+        return -1;
+
+    uint64_t number;
+    char name[LEGACY_STUDENT_NAME_SIZE];
+    float chinese;
+    float math;
+    float english;
+    uint32_t padding;
+
+    if (fread(&number, sizeof(number), 1, fp) != 1)
+        return feof(fp) ? 0 : -1;
+
+    if (fread(name, sizeof(name), 1, fp) != 1 ||
+        fread(&chinese, sizeof(chinese), 1, fp) != 1 ||
+        fread(&math, sizeof(math), 1, fp) != 1 ||
+        fread(&english, sizeof(english), 1, fp) != 1 ||
+        fread(&padding, sizeof(padding), 1, fp) != 1)
+    {
+        return -1;
+    }
+    (void)padding;
+
+    name[LEGACY_STUDENT_NAME_SIZE - 1] = '\0';
+    memset(stu->name, 0, STUDENT_NAME_SIZE);
+    stu->number = number;
+    memcpy(stu->name, name, LEGACY_STUDENT_NAME_SIZE);
+    stu->chinese = chinese;
+    stu->math = math;
+    stu->english = english;
+    return 1;
+}
+
+static long get_file_size(FILE *fp)
+{
+    if (!fp)
+        return -1;
+    if (fseek(fp, 0, SEEK_END) != 0)
+        return -1;
+    long size = ftell(fp);
+    if (size < 0)
+        return -1;
+    if (fseek(fp, 0, SEEK_SET) != 0)
+        return -1;
+    return size;
 }
 
 /* ------------------------------------------------------------------ *
@@ -603,7 +667,7 @@ int student_manager_alter(StudentManager *manager)
     {
         if (strlen(name) >= STUDENT_NAME_SIZE)
         {
-            printf("姓名过长，最多 10 个汉字（或 31 个英文字母）。\n");
+            printf("姓名过长，最多 21 个汉字（或 63 个英文字母）。\n");
             return -1;
         }
         memcpy(pstu->name, name, strlen(name) + 1);
@@ -686,6 +750,36 @@ int student_manager_load(StudentManager *manager)
         return -1;
     }
 
+    long file_size = get_file_size(fp);
+    if (file_size < 0)
+    {
+        fclose(fp);
+        printf("无法读取数据文件大小：%s\n", manager->filename);
+        return -1;
+    }
+
+    bool legacy = false;
+    if (file_size > 0)
+    {
+        if (file_size % (long)STUDENT_RECORD_SIZE == 0)
+        {
+            legacy = false;
+        }
+        else if (file_size % (long)LEGACY_STUDENT_RECORD_SIZE == 0)
+        {
+            legacy = true;
+        }
+        else
+        {
+            fclose(fp);
+            printf("数据文件大小不符合记录格式，已拒绝加载：%s\n", manager->filename);
+            return -1;
+        }
+    }
+
+    if (legacy)
+        printf("检测到旧版 56 字节数据文件，读取后将在保存时转换为 88 字节新格式。\n");
+
     bool failed = false;
     while (true)
     {
@@ -697,7 +791,7 @@ int student_manager_load(StudentManager *manager)
             break;
         }
 
-        int status = read_student(fp, temp_stu);
+        int status = legacy ? read_student_legacy(fp, temp_stu) : read_student(fp, temp_stu);
         if (status == 1)
         {
             flist_push_back(manager->flist, temp_stu);

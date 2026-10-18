@@ -67,38 +67,39 @@ test('validateStudent 处理 uint64 边界与重复学号', () => {
   assert.equal(selfEdit.valid, true);
 });
 
-test('姓名按 UTF-8 字节数限制为 31 字节', () => {
+test('姓名按 UTF-8 字节数限制为 63 字节', () => {
   const ok = C.validateStudent({
-    number: '1', name: '张'.repeat(10), chinese: 60, math: 60, english: 60
+    number: '1', name: '张'.repeat(21), chinese: 60, math: 60, english: 60
   });
   assert.equal(ok.valid, true);
 
   const tooLong = C.validateStudent({
-    number: '1', name: '张'.repeat(11), chinese: 60, math: 60, english: 60
+    number: '1', name: '张'.repeat(22), chinese: 60, math: 60, english: 60
   });
   assert.equal(tooLong.valid, false);
-  assert.match(tooLong.errors.name, /31/);
+  assert.match(tooLong.errors.name, /63|21/);
 });
 
 /* ------------------------------------------------------------------ *
  * 二进制编解码
  * ------------------------------------------------------------------ */
 
-test('encodeBinary 输出 56 字节/条的 C 结构体布局', () => {
+test('encodeBinary 输出 88 字节/条的固定布局', () => {
   const bytes = C.encodeBinary([
     { number: '20240101', name: '张伟', chinese: 88, math: 92.5, english: 85 }
   ]);
   assert.equal(bytes.length, C.RECORD_SIZE);
+  assert.equal(bytes.length, 88);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   assert.equal(view.getBigUint64(0, true), 20240101n);
-  assert.equal(view.getFloat32(40, true), 88);
-  assert.equal(view.getFloat32(44, true), 92.5);
-  assert.equal(view.getFloat32(48, true), 85);
+  assert.equal(view.getFloat32(72, true), 88);
+  assert.equal(view.getFloat32(76, true), 92.5);
+  assert.equal(view.getFloat32(80, true), 85);
   // 学号字段后紧跟姓名，其后 '\0' 填充
   assert.deepEqual(Array.from(bytes.slice(8, 14)), Array.from(new TextEncoder().encode('张伟')));
-  assert.deepEqual(Array.from(bytes.slice(14, 40)), new Array(26).fill(0));
+  assert.deepEqual(Array.from(bytes.slice(14, 72)), new Array(58).fill(0));
   // 结构体末尾 4 字节对齐填充为 0
-  assert.deepEqual(Array.from(bytes.slice(52, 56)), [0, 0, 0, 0]);
+  assert.deepEqual(Array.from(bytes.slice(84, 88)), [0, 0, 0, 0]);
 });
 
 test('二进制编解码往返保持数据一致（含 uint64 上限）', () => {
@@ -116,10 +117,13 @@ test('二进制编解码往返保持数据一致（含 uint64 上限）', () => 
 
 test('可以解析 C 程序实际生成的 data/student.txt（按文件内容动态校验）', () => {
   const buffer = readFileSync(projectDataFile);
-  assert.equal(buffer.length % C.RECORD_SIZE, 0);
+  const expectedFormat = buffer.length % C.RECORD_SIZE === 0 ? 'new' : 'legacy';
+  const recordSize = expectedFormat === 'new' ? C.RECORD_SIZE : C.LEGACY_RECORD_SIZE;
+  assert.equal(buffer.length % recordSize, 0);
   const decoded = C.decodeBinary(buffer);
   assert.equal(decoded.errors.length, 0);
-  assert.equal(decoded.students.length, buffer.length / C.RECORD_SIZE);
+  assert.equal(decoded.format, expectedFormat);
+  assert.equal(decoded.students.length, buffer.length / recordSize);
   assert.ok(decoded.students.length > 0);
   decoded.students.forEach((student) => {
     assert.match(student.number, /^\d+$/);
@@ -131,10 +135,32 @@ test('可以解析 C 程序实际生成的 data/student.txt（按文件内容动
   // 重新编码后再解析，记录数量与字段保持一致
   const redecoded = C.decodeBinary(C.encodeBinary(decoded.students));
   assert.equal(redecoded.errors.length, 0);
+  assert.equal(redecoded.format, 'new');
   assert.deepEqual(
     redecoded.students.map((student) => [student.number, student.name, student.chinese, student.math, student.english]),
     decoded.students.map((student) => [student.number, student.name, student.chinese, student.math, student.english])
   );
+});
+
+test('decodeBinary 兼容旧版 56 字节记录', () => {
+  const buffer = new ArrayBuffer(C.LEGACY_RECORD_SIZE);
+  const view = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+  view.setBigUint64(0, 123n, true);
+  bytes.set(new TextEncoder().encode('旧版姓名'), 8);
+  view.setFloat32(40, 88, true);
+  view.setFloat32(44, 92, true);
+  view.setFloat32(48, 85, true);
+
+  const decoded = C.decodeBinary(new Uint8Array(buffer));
+  assert.equal(decoded.format, 'legacy');
+  assert.equal(decoded.errors.length, 0);
+  assert.equal(decoded.students.length, 1);
+  assert.equal(decoded.students[0].name, '旧版姓名');
+
+  const migrated = C.decodeBinary(C.encodeBinary(decoded.students));
+  assert.equal(migrated.format, 'new');
+  assert.equal(migrated.students[0].name, '旧版姓名');
 });
 
 test('decodeBinary 对非法文件给出可读错误', () => {
@@ -348,9 +374,9 @@ test('二进制导入拒绝非法 UTF-8 姓名并提示', () => {
   view.setBigUint64(0, 1n, true);
   bytes[8] = 0xff;
   bytes[9] = 0xfe;
-  view.setFloat32(40, 60, true);
-  view.setFloat32(44, 60, true);
-  view.setFloat32(48, 60, true);
+  view.setFloat32(72, 60, true);
+  view.setFloat32(76, 60, true);
+  view.setFloat32(80, 60, true);
 
   const decoded = C.decodeBinary(new Uint8Array(buffer));
   assert.equal(decoded.students.length, 0);

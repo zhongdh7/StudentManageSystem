@@ -50,6 +50,8 @@
   var storageWarningShown = false;
   var modalStack = [];
   var modalSequence = 0;
+  var apiMode = false;
+  var apiRefreshPromise = null;
 
   /* ------------------------------------------------------------------ *
    * 通用工具
@@ -166,9 +168,79 @@
     }
   }
 
-  function boot() {
+  async function boot() {
     initTheme();
     initSidebarResize();
+
+    var backendData = await loadFromBackend();
+    if (backendData) {
+      apiMode = true;
+      store = createBackendStore(backendData);
+    } else {
+      initLocalStore();
+      if (window.__SMS_BACKEND__ === 'c') {
+        window.setTimeout(function () {
+          toast('C 后端连接失败，已切换到本地模式，请确认 server.exe 正在运行。', 'error', { duration: 8000 });
+        }, 900);
+      }
+    }
+
+    bindEvents();
+    applyView(parseHashView(), true);
+
+    if (!hasOnboarded()) {
+      window.setTimeout(function () {
+        openWelcomeWizard();
+      }, 450);
+    }
+  }
+
+  async function loadFromBackend() {
+    if (window.__SMS_BACKEND__ !== 'c' || !/^https?:$/.test(window.location.protocol))
+      return null;
+
+    try {
+      var healthResponse = await fetch('/api/health', { cache: 'no-store' });
+      if (!healthResponse.ok)
+        return null;
+      var health = await healthResponse.json();
+      if (!health || health.mode !== 'c-backend')
+        return null;
+
+      var response = await fetch('/api/students', { cache: 'no-store' });
+      if (!response.ok)
+        return null;
+      var payload = await response.json();
+      if (!payload || !Array.isArray(payload.students))
+        return null;
+
+      var students = [];
+      payload.students.forEach(function (raw) {
+        var result = C.validateStudent(raw);
+        if (result.valid)
+          students.push(result.value);
+      });
+
+      return {
+        students: students,
+        savedAt: payload.savedAt || Date.now()
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function createBackendStore(data) {
+    var backendStore = new C.StudentStore(C.createMemoryStorage());
+    backendStore.students = data.students;
+    backendStore.loaded = true;
+    backendStore.demo = false;
+    backendStore.lastSavedAt = data.savedAt;
+    backendStore.activity = [];
+    return backendStore;
+  }
+
+  function initLocalStore() {
     store = new C.StudentStore(getStorage());
     var hadSaved = store.load();
     var corruptBackupSaved = false;
@@ -193,9 +265,6 @@
       });
     }
 
-    bindEvents();
-    applyView(parseHashView(), true);
-
     if (store.corrupt) {
       window.setTimeout(function () {
         toast(corruptBackupSaved
@@ -213,12 +282,113 @@
         toast('当前浏览器禁用了本地存储，数据只保存在内存中，关闭页面后会丢失。', 'error', { duration: 7000 });
       }, 600);
     }
+  }
 
-    if (!hasOnboarded()) {
-      window.setTimeout(function () {
-        openWelcomeWizard();
-      }, 450);
+  /* ------------------------------------------------------------------ *
+   * C 后端 API
+   * ------------------------------------------------------------------ */
+
+  function backendRequest(path, options) {
+    var opts = options || {};
+    var init = {
+      method: opts.method || 'GET',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json' }
+    };
+    if (opts.body !== undefined)
+      init.body = JSON.stringify(opts.body);
+
+    return fetch(path, init).then(function (response) {
+      return response.json().catch(function () {
+        return null;
+      }).then(function (payload) {
+        if (!response.ok || !payload || payload.ok === false) {
+          throw new Error((payload && payload.error) || ('HTTP ' + response.status));
+        }
+        return payload;
+      });
+    });
+  }
+
+  function refreshFromBackend() {
+    if (!apiMode)
+      return Promise.resolve();
+    if (apiRefreshPromise)
+      return apiRefreshPromise;
+
+    apiRefreshPromise = fetch('/api/students', { cache: 'no-store' })
+      .then(function (response) {
+        if (!response.ok)
+          throw new Error('HTTP ' + response.status);
+        return response.json();
+      })
+      .then(function (payload) {
+        if (!payload || !Array.isArray(payload.students))
+          throw new Error('后端返回数据格式不正确');
+        var students = [];
+        payload.students.forEach(function (raw) {
+          var result = C.validateStudent(raw);
+          if (result.valid)
+            students.push(result.value);
+        });
+        store.students = students;
+        store.lastSavedAt = payload.savedAt || Date.now();
+        renderAll();
+      })
+      .finally(function () {
+        apiRefreshPromise = null;
+      });
+
+    return apiRefreshPromise;
+  }
+
+  function handleBackendFailure(error) {
+    toast('C 后端请求失败：' + (error && error.message ? error.message : String(error)), 'error', { duration: 8000 });
+    refreshFromBackend().catch(function () {
+      /* 连接失败时保留当前界面数据，等待用户重试 */
+    });
+  }
+
+  function apiCreate(student) {
+    return backendRequest('/api/students', {
+      method: 'POST',
+      body: student
+    }).then(function () {
+      store.lastSavedAt = Date.now();
+    });
+  }
+
+  function apiUpdate(originalNumber, student) {
+    return backendRequest('/api/students/' + encodeURIComponent(originalNumber), {
+      method: 'PUT',
+      body: student
+    }).then(function () {
+      store.lastSavedAt = Date.now();
+    });
+  }
+
+  function apiDelete(number) {
+    return backendRequest('/api/students/' + encodeURIComponent(number), {
+      method: 'DELETE'
+    }).then(function () {
+      store.lastSavedAt = Date.now();
+    });
+  }
+
+  function apiClear() {
+    return backendRequest('/api/students', {
+      method: 'DELETE'
+    }).then(function () {
+      store.lastSavedAt = Date.now();
+    });
+  }
+
+  async function apiReplaceAll(students) {
+    await apiClear();
+    for (var index = 0; index < students.length; index += 1) {
+      await apiCreate(students[index]);
     }
+    store.lastSavedAt = Date.now();
   }
 
   function parseHashView() {
@@ -449,7 +619,7 @@
           '<span class="welcome-logo">' + icon('i-graduation') + '</span>' +
           '<div>' +
             '<h3>欢迎使用学籍云</h3>' +
-            '<p>这是「高校学生成绩管理系统」的网页界面，帮助你更方便地查看、录入和管理学生成绩。数据保存在当前浏览器中，也可以导入 / 导出数据文件进行备份。</p>' +
+            '<p>这是「高校学生成绩管理系统」的网页界面，帮助你更方便地查看、录入和管理学生成绩。数据会自动保存，也可以导入 / 导出数据文件进行备份。</p>' +
           '</div>' +
         '</div>' +
         '<div class="welcome-features">' +
@@ -458,12 +628,12 @@
           '<span class="welcome-feature">' + icon('i-chart') + '成绩分析</span>' +
           '<span class="welcome-feature">' + icon('i-upload') + '导入导出</span>' +
         '</div>' +
-        '<div class="welcome-note"><strong>刚开始使用？</strong>本地没有数据时会自动载入示例数据；之后可随时在「数据管理」中导入已有的学生数据文件，或直接手动录入。</div>' +
+        '<div class="welcome-note"><strong>刚开始使用？</strong>可以导入已有的学生数据文件，或直接手动录入；也可以先浏览当前数据。</div>' +
       '</section>',
 
       '<section class="welcome-slide" data-step="1" aria-hidden="true">' +
         '<h3>导入、管理与备份数据</h3>' +
-        '<p>数据默认保存在当前浏览器中；也可以通过数据文件导入已有记录，或导出备份用于长期保存和换设备。</p>' +
+        '<p>数据会自动保存；也可以通过数据文件导入已有记录，或导出备份用于长期保存和换设备。</p>' +
         '<div class="welcome-interop">' +
           '<div class="welcome-interop-card">' +
             '<span class="icon-badge icon-badge--indigo">' + icon('i-upload') + '</span>' +
@@ -488,7 +658,7 @@
           '<div class="welcome-start-item"><span class="welcome-start-no">2</span><div><strong>管理成绩与查看分析</strong><p>搜索、筛选、排序、编辑成绩；在「成绩分析」中查看科目对比、分数段和总分排名。</p></div></div>' +
           '<div class="welcome-start-item"><span class="welcome-start-no">3</span><div><strong>导出与备份</strong><p>导出学生数据文件或 JSON 备份，保存到电脑，方便长期保存或换设备。</p></div></div>' +
         '</div>' +
-        '<div class="welcome-note">修改会自动保存在浏览器中；按 <strong>Ctrl / Cmd + K</strong> 可快速聚焦搜索框。</div>' +
+        '<div class="welcome-note">修改会自动保存；按 <strong>Ctrl / Cmd + K</strong> 可快速聚焦搜索框。</div>' +
       '</section>',
 
       '<section class="welcome-slide" data-step="3" aria-hidden="true">' +
@@ -619,7 +789,8 @@
   function renderGuideSummary() {
     var element = $('#guide-data-summary');
     if (!element) return;
-    element.textContent = (store.demo ? '示例数据' : '本地数据') + ' · ' + store.students.length + ' 名学生';
+    var source = apiMode ? 'C 后端' : (store.demo ? '示例数据' : '本地数据');
+    element.textContent = source + ' · ' + store.students.length + ' 名学生';
   }
 
   function renderSidebar() {
@@ -629,7 +800,10 @@
     var dot = $('#storage-dot');
     var label = $('#storage-label');
     if (!dot || !label) return;
-    if (!storageAvailable || store.storageFailed) {
+    if (apiMode) {
+      dot.className = 'dot dot--green';
+      label.textContent = 'C 后端已连接';
+    } else if (!storageAvailable || store.storageFailed) {
       dot.className = 'dot dot--red';
       label.textContent = '仅内存模式';
     } else if (store.demo) {
@@ -644,11 +818,11 @@
   function renderDemoBanner() {
     var banner = $('#demo-banner');
     if (!banner) return;
-    banner.classList.toggle('hidden', !store.demo);
+    banner.classList.toggle('hidden', !store.demo || apiMode);
   }
 
   function checkStorageWarning() {
-    if (storageWarningShown) return;
+    if (apiMode || storageWarningShown) return;
     if (!storageAvailable || store.storageFailed) {
       storageWarningShown = true;
       toast('本地存储不可用，数据仅保存在内存中，请及时导出备份。', 'error', { duration: 7000 });
@@ -1095,18 +1269,29 @@
     if (recordCount) recordCount.textContent = String(count);
     var fileSize = $('#data-file-size');
     if (fileSize) fileSize.textContent = C.formatBytes(count * C.RECORD_SIZE);
-    var modeText = store.demo ? '示例数据' : '本地数据';
+
+    var modeText = apiMode ? 'C 后端' : (store.demo ? '示例数据' : '本地数据');
     var mode = $('#data-mode');
     if (mode) mode.textContent = modeText;
     var demoState = $('#data-demo-state');
     if (demoState) demoState.textContent = modeText;
+
     var lastSaved = $('#data-last-saved');
     if (lastSaved) lastSaved.textContent = store.lastSavedAt ? formatDateTime(store.lastSavedAt) : '—';
+
     var storageSize = $('#data-storage-size');
-    if (storageSize) storageSize.textContent = C.formatBytes(store.storageSize());
+    if (storageSize) storageSize.textContent = C.formatBytes(apiMode ? count * C.RECORD_SIZE : store.storageSize());
+
+    var title = $('#data-storage-title');
+    if (title) title.textContent = apiMode ? 'C 后端数据' : '本地存储';
+    var subtitle = $('#data-storage-sub');
+    if (subtitle) subtitle.textContent = apiMode ? '修改自动写入 data/student.txt' : '自动保存，无需手动操作';
+
     var hint = $('#data-storage-hint');
     if (hint) {
-      if (!storageAvailable) {
+      if (apiMode) {
+        hint.textContent = '数据由 C 后端保存在 data/student.txt，每次修改会自动写入；建议定期导出备份。';
+      } else if (!storageAvailable) {
         hint.textContent = '浏览器禁用了本地存储，数据仅保存在内存中，关闭页面后会丢失，请及时导出备份。';
       } else if (store.storageFailed) {
         hint.textContent = '本地存储写入失败（可能空间不足），数据目前只在内存中，请立即导出备份。';
@@ -1461,7 +1646,7 @@
       '<div class="preview-panel">' +
         '<div><span>总分</span><strong id="preview-total">—</strong></div>' +
         '<div><span>平均分</span><strong id="preview-average">—</strong></div>' +
-        '<p>成绩范围 0–100，最多保留一位小数；姓名最多 10 个汉字（或 31 个英文字母）。</p>' +
+        '<p>成绩范围 0–100，最多保留一位小数；姓名最多 21 个汉字（或 63 个英文字母）。</p>' +
       '</div>' +
     '</form>';
 
@@ -1490,8 +1675,8 @@
     function updateNameCounter() {
       var characters = Array.from(nameInput.value.trim()).length;
       var bytes = C.utf8ByteLength(nameInput.value.trim());
-      counter.textContent = '已输入 ' + characters + ' 个字符' + (bytes > 31 ? ' · 超长' : '');
-      counter.classList.toggle('is-over', bytes > 31);
+      counter.textContent = '已输入 ' + characters + ' 个字符' + (bytes > C.MAX_NAME_BYTES ? ' · 超长' : '');
+      counter.classList.toggle('is-over', bytes > C.MAX_NAME_BYTES);
     }
 
     function updatePreview() {
@@ -1522,7 +1707,7 @@
     updateNameCounter();
     updatePreview();
 
-    form.addEventListener('submit', function (event) {
+    form.addEventListener('submit', async function (event) {
       event.preventDefault();
       var existingNumbers = new Set();
       store.students.forEach(function (item) {
@@ -1546,16 +1731,27 @@
         return;
       }
 
+      var submitButton = element.querySelector('button[form="student-form"]');
+      if (submitButton) submitButton.disabled = true;
+
       try {
         if (isEdit) {
+          if (apiMode) await apiUpdate(student.number, validation.value);
           store.update(student.number, validation.value);
         } else {
+          if (apiMode) await apiCreate(validation.value);
           store.add(validation.value);
           resetFilterInputs();
         }
       } catch (error) {
-        toast(error && error.message ? error.message : '保存失败', 'error');
+        if (apiMode) {
+          handleBackendFailure(error);
+        } else {
+          toast(error && error.message ? error.message : '保存失败', 'error');
+        }
         return;
+      } finally {
+        if (submitButton) submitButton.disabled = false;
       }
 
       close();
@@ -1600,42 +1796,61 @@
    * 删除与撤销
    * ------------------------------------------------------------------ */
 
-  function deleteStudent(number) {
+  async function deleteStudent(number) {
     var student = findStudent(number);
     if (!student) return;
-    confirmDialog({
+
+    var accepted = await confirmDialog({
       title: '删除学生',
       message: '确定要删除 <strong>' + escapeHtml(student.name) + '</strong>（' + escapeHtml(student.number) + '）吗？',
       details: '删除后可以通过提示条撤销；如果刷新页面，将无法恢复。',
       confirmText: '删除',
       variant: 'danger',
       icon: icon('i-trash')
-    }).then(function (accepted) {
-      if (!accepted) return;
-      var result;
+    });
+    if (!accepted) return;
+
+    if (apiMode) {
       try {
-        result = store.remove(number);
+        await apiDelete(number);
       } catch (error) {
-        toast(error && error.message ? error.message : '删除失败', 'error');
+        handleBackendFailure(error);
         return;
       }
-      renderAll();
-      toast('已删除 ' + student.name, 'success', {
-        duration: 8000,
-        action: {
-          label: '撤销',
-          onClick: function () {
+    }
+
+    var result;
+    try {
+      result = store.remove(number);
+    } catch (error) {
+      toast(error && error.message ? error.message : '删除失败', 'error');
+      return;
+    }
+
+    renderAll();
+    toast('已删除 ' + student.name, 'success', {
+      duration: 8000,
+      action: {
+        label: '撤销',
+        onClick: async function () {
+          if (apiMode) {
             try {
-              store.restore(result.student, result.index);
+              await apiCreate(result.student);
             } catch (error) {
-              toast(error && error.message ? error.message : '撤销失败', 'error');
+              handleBackendFailure(error);
               return;
             }
-            renderAll();
-            toast('已恢复 ' + student.name, 'info');
           }
+          try {
+            store.restore(result.student, result.index);
+          } catch (error) {
+            toast(error && error.message ? error.message : '撤销失败', 'error');
+            return;
+          }
+          renderAll();
+          toast('已恢复 ' + student.name, 'info');
         }
-      });
+      }
     });
   }
 
@@ -1677,7 +1892,8 @@
         kind: kind,
         fileName: file.name,
         students: result.students,
-        invalid: result.errors
+        invalid: result.errors,
+        legacy: result.format === 'legacy'
       });
     }).catch(function (error) {
       toast('读取文件失败：' + (error && error.message ? error.message : String(error)), 'error', { duration: 6500 });
@@ -1728,7 +1944,9 @@
         '</label>' +
       '</div>' +
       '<p class="hint">' + (options.kind === 'binary'
-        ? '数据来自学生数据文件；导入后网页中的数据即为最新记录。'
+        ? (options.legacy
+          ? '检测到旧版数据文件，导入后会自动转换为新格式。'
+          : '数据来自学生数据文件；导入后网页中的数据即为最新记录。')
         : '数据来自 JSON 备份文件，可选择覆盖或合并。') + '</p>' +
     '</div>';
 
@@ -1740,8 +1958,10 @@
       footer: '<button type="button" class="btn btn-ghost" data-role="cancel">取消</button>' +
         '<button type="button" class="btn btn-primary" data-role="confirm">确认导入</button>',
       onMount: function (element, close) {
-        element.querySelector('[data-role="cancel"]').addEventListener('click', close);
-        element.querySelector('[data-role="confirm"]').addEventListener('click', function () {
+        var cancelButton = element.querySelector('[data-role="cancel"]');
+        var confirmButton = element.querySelector('[data-role="confirm"]');
+        cancelButton.addEventListener('click', close);
+        confirmButton.addEventListener('click', async function () {
           var mode = element.querySelector('input[name="import-mode"]:checked').value;
           var next;
           var activityMessage;
@@ -1770,11 +1990,25 @@
             toastMessage = '已合并导入 ' + added + ' 条记录' + (skipped ? '，跳过 ' + skipped + ' 条重复学号' : '');
           }
 
-          store.replaceAll(next, {
-            demo: false,
-            activityType: 'import',
-            message: activityMessage
-          });
+          confirmButton.disabled = true;
+          try {
+            if (apiMode) await apiReplaceAll(next);
+            store.replaceAll(next, {
+              demo: false,
+              activityType: 'import',
+              message: activityMessage
+            });
+          } catch (error) {
+            if (apiMode) {
+              handleBackendFailure(error);
+            } else {
+              toast(error && error.message ? error.message : '导入失败', 'error');
+            }
+            return;
+          } finally {
+            confirmButton.disabled = false;
+          }
+
           resetFilterInputs();
           close();
           renderAll();
@@ -1843,10 +2077,10 @@
    * 示例数据 / 清空
    * ------------------------------------------------------------------ */
 
-  function loadDemoData() {
-    var proceed = store.students.length === 0
-      ? Promise.resolve(true)
-      : confirmDialog({
+  async function loadDemoData() {
+    var accepted = store.students.length === 0
+      ? true
+      : await confirmDialog({
           title: '载入示例数据',
           message: '将用 12 条示例数据替换当前的全部 <strong>' + store.students.length + '</strong> 条记录。',
           details: '当前数据会被覆盖，建议先在「数据管理」中导出备份。',
@@ -1854,39 +2088,61 @@
           variant: 'primary',
           icon: icon('i-sparkles')
         });
+    if (!accepted) return;
 
-    proceed.then(function (accepted) {
-      if (!accepted) return;
-      store.replaceAll(C.demoStudents(), {
-        demo: true,
+    var demoStudents = C.demoStudents();
+    try {
+      if (apiMode) await apiReplaceAll(demoStudents);
+      store.replaceAll(demoStudents, {
+        demo: !apiMode,
         activityType: 'demo',
         message: '载入示例数据（12 名学生）'
       });
-      resetFilterInputs();
-      renderAll();
-      toast('已载入 12 条示例数据', 'success');
-    });
+    } catch (error) {
+      if (apiMode) {
+        handleBackendFailure(error);
+      } else {
+        toast(error && error.message ? error.message : '载入示例数据失败', 'error');
+      }
+      return;
+    }
+
+    resetFilterInputs();
+    renderAll();
+    toast('已载入 12 条示例数据', 'success');
   }
 
-  function clearAllData() {
+  async function clearAllData() {
     if (!store.students.length) {
       toast('当前没有学生数据', 'info');
       return;
     }
-    confirmDialog({
+
+    var accepted = await confirmDialog({
       title: '清空全部数据',
       message: '确定要删除全部 <strong>' + store.students.length + '</strong> 条学生记录吗？',
       details: '此操作不可撤销！建议先在「数据管理」中导出数据文件或 JSON 备份。',
       confirmText: '确认清空',
       variant: 'danger',
       icon: icon('i-alert-triangle')
-    }).then(function (accepted) {
-      if (!accepted) return;
-      store.clear();
-      resetFilterInputs();
-      renderAll();
-      toast('已清空全部学生数据', 'success');
     });
+    if (!accepted) return;
+
+    try {
+      if (apiMode) await apiClear();
+      store.clear();
+    } catch (error) {
+      if (apiMode) {
+        handleBackendFailure(error);
+      } else {
+        toast(error && error.message ? error.message : '清空数据失败', 'error');
+      }
+      return;
+    }
+
+    resetFilterInputs();
+    renderAll();
+    toast('已清空全部学生数据', 'success');
   }
 
   /* ------------------------------------------------------------------ *

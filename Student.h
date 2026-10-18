@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 // 姓名字段容量（包含结尾 '\0'）
-#define STUDENT_NAME_SIZE 32
+#define STUDENT_NAME_SIZE 64
 
 // 学生结构
 typedef struct Student
