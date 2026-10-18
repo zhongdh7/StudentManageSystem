@@ -9,7 +9,7 @@
       "stopAtEntry": false,
       "externalConsole": true,
       "cwd": "c:/File/01-coding-practice/C/StudentManageSystem",
-      "program": "c:/File/01-coding-practice/C/StudentManageSystem/build/Debug/outDebug",
+      "program": "c:/File/01-coding-practice/C/StudentManageSystem/build/Release/outRelease",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
