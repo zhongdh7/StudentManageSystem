@@ -11,10 +11,16 @@
 int main()
 {
 #ifdef _WIN32
-    // Set the console output code page to UTF-8
+    // Set the console input/output code page to UTF-8
+    SetConsoleCP(CP_UTF8);
     SetConsoleOutputCP(CP_UTF8);
 #endif
     StudentManager *manager = student_manager_alloc();
+    if (manager == NULL)
+    {
+        fprintf(stderr, "初始化学生管理系统失败：内存不足。\n");
+        return 1;
+    }
 
     student_manager_run(manager);
 

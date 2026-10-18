@@ -9,10 +9,11 @@ typedef struct StudentManager
     ForwardList *flist;
     const char* filename;   //保存加载文件名
     bool isrunning;         //是否运行管理系统
+    bool loaded;            //数据文件是否成功加载，未加载时禁止保存
 } StudentManager;
 
 // 创建学生管理器
-StudentManager *student_manager_alloc();
+StudentManager *student_manager_alloc(void);
 
 // 释放学生管理器
 void student_manager_free(StudentManager *manager);
@@ -21,7 +22,7 @@ void student_manager_free(StudentManager *manager);
 void student_manager_run(StudentManager *);
 
 // 菜单
-int student_manager_menu();
+int student_manager_menu(void);
 
 // 退出
 int student_manager_quit(StudentManager *manager);
