@@ -147,11 +147,14 @@
     var errors = {};
     var value = {};
 
+    var rawNumber = trimToString(source.number);
     var number = normalizeNumber(source.number);
-    if (trimToString(source.number) === '') {
+    if (rawNumber === '') {
       errors.number = '请输入学号';
+    } else if (!/^\d+$/.test(rawNumber)) {
+      errors.number = '学号需为纯数字';
     } else if (number === null) {
-      errors.number = '学号需为纯数字，且不超过 uint64 范围';
+      errors.number = '学号数值过大，请检查是否输入正确';
     } else {
       value.number = number;
       if (optionsSafe.existingNumbers && optionsSafe.existingNumbers.has(number)) {
@@ -166,9 +169,9 @@
     if (!name) {
       errors.name = '请输入姓名';
     } else if (utf8ByteLength(name) > MAX_NAME_BYTES) {
-      errors.name = '姓名过长（' + utf8ByteLength(name) + ' 字节），上限为 ' + MAX_NAME_BYTES + ' 字节';
+      errors.name = '姓名过长，请控制在 10 个汉字（或 31 个英文字母）以内';
     } else if (/[\u0000-\u001f\u007f]/.test(name)) {
-      errors.name = '姓名不能包含控制字符';
+      errors.name = '姓名包含不支持的字符，请修改';
     } else {
       value.name = name;
     }
@@ -436,8 +439,7 @@
         students: [],
         errors: [{
           index: -1,
-          reason: '文件长度为 ' + bytes.length + ' 字节，不是 ' + RECORD_SIZE +
-            ' 的整数倍，可能不是 C 程序生成的 student.txt'
+          reason: '文件格式不正确（长度 ' + bytes.length + ' 字节），请选择有效的学生数据文件'
         }]
       };
     }
@@ -459,7 +461,7 @@
       try {
         name = decoder.decode(nameBytes.subarray(0, nameLength)).trim();
       } catch (error) {
-        errors.push({ index: recordIndex, reason: '姓名字段不是合法的 UTF-8 编码，已跳过' });
+        errors.push({ index: recordIndex, reason: '姓名数据格式不正确，已跳过' });
         continue;
       }
 

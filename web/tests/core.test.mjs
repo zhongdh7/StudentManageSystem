@@ -140,7 +140,7 @@ test('可以解析 C 程序实际生成的 data/student.txt（按文件内容动
 test('decodeBinary 对非法文件给出可读错误', () => {
   const badLength = C.decodeBinary(new Uint8Array(10));
   assert.equal(badLength.students.length, 0);
-  assert.match(badLength.errors[0].reason, /56/);
+  assert.match(badLength.errors[0].reason, /格式|数据文件/);
 
   const empty = C.decodeBinary(new Uint8Array(0));
   assert.equal(empty.students.length, 0);
@@ -355,7 +355,7 @@ test('二进制导入拒绝非法 UTF-8 姓名并提示', () => {
   const decoded = C.decodeBinary(new Uint8Array(buffer));
   assert.equal(decoded.students.length, 0);
   assert.equal(decoded.errors.length, 1);
-  assert.match(decoded.errors[0].reason, /UTF-8/);
+  assert.match(decoded.errors[0].reason, /姓名|格式/);
 });
 
 test('活动记录中的非法 time/type 会被清洗', () => {

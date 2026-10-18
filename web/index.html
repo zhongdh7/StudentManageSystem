@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="高校学生成绩管理系统前端界面：数据看板、学生管理、成绩分析，并与 C 语言后端的 student.txt 二进制数据文件完全互通。">
+  <meta name="description" content="高校学生成绩管理系统前端界面：数据看板、学生管理、成绩分析、数据导入导出与备份。">
   <meta name="color-scheme" content="light dark">
   <title>学籍云 · 高校学生成绩管理系统</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E">
@@ -91,15 +91,6 @@
         </button>
       </nav>
 
-      <div class="side-card">
-        <div class="side-card-title">
-          <svg class="icon"><use href="#i-database"></use></svg>
-          <span>C 后端互通</span>
-        </div>
-        <p>与 C 程序共用 <code>student.txt</code> 二进制记录格式，导入导出即可双向同步。</p>
-        <button type="button" class="btn btn-soft btn-sm btn-block" data-goto="data">查看数据文件</button>
-      </div>
-
       <div class="sidebar-foot">
         <div class="storage-state" id="storage-state">
           <span class="dot dot--green" id="storage-dot"></span>
@@ -145,7 +136,7 @@
             <span class="demo-icon"><svg class="icon"><use href="#i-sparkles"></use></svg></span>
             <div class="demo-text">
               <strong>正在浏览示例数据</strong>
-              <p>导入 C 后端生成的 <code>data/student.txt</code>，即可管理你的真实成绩数据。</p>
+              <p>导入已有的学生数据文件，即可管理你的真实成绩数据。</p>
             </div>
             <div class="demo-actions">
               <button type="button" class="btn btn-primary btn-sm" data-goto="data">前往导入</button>
@@ -335,8 +326,8 @@
                 <div class="data-card-title">
                   <span class="icon-badge icon-badge--indigo"><svg class="icon"><use href="#i-file"></use></svg></span>
                   <div>
-                    <h2>student.txt 数据文件</h2>
-                    <p>与 C 后端共用的二进制记录格式</p>
+                    <h2>学生数据文件</h2>
+                    <p>导入或导出学生数据</p>
                   </div>
                 </div>
               </div>
@@ -347,15 +338,15 @@
               </div>
               <div class="dropzone" id="binary-dropzone">
                 <div class="dropzone-icon"><svg class="icon"><use href="#i-upload"></use></svg></div>
-                <strong>拖拽 student.txt 到这里</strong>
-                <p>或从 C 程序的 <code>data/</code> 目录选择文件</p>
+                <strong>拖拽数据文件到这里</strong>
+                <p>或点击下方按钮选择文件</p>
                 <button type="button" class="btn btn-primary btn-sm" id="btn-import-binary">选择文件导入</button>
-                <span class="dropzone-hint">每条记录 56 字节 · 小端序 · 姓名 UTF-8</span>
+                <span class="dropzone-hint">导入学生数据文件，数据仅保存在当前浏览器</span>
               </div>
               <div class="card-actions">
                 <button type="button" class="btn btn-ghost" id="btn-export-binary">
                   <svg class="icon"><use href="#i-download"></use></svg>
-                  <span>导出 student.txt</span>
+                  <span>导出数据文件</span>
                 </button>
               </div>
             </article>
@@ -363,22 +354,19 @@
             <article class="card data-card">
               <div class="card-head">
                 <div class="data-card-title">
-                  <span class="icon-badge icon-badge--violet"><svg class="icon"><use href="#i-database"></use></svg></span>
+                  <span class="icon-badge icon-badge--violet"><svg class="icon"><use href="#i-info"></use></svg></span>
                   <div>
-                    <h2>格式说明</h2>
-                    <p>C 语言结构体与文件布局</p>
+                    <h2>使用提示</h2>
+                    <p>关于导入、备份与迁移</p>
                   </div>
                 </div>
               </div>
-              <pre class="code-block"><code>typedef struct Student {
-    uint64_t number;    // 8 B   学号
-    char     name[32];  // 32 B  姓名（UTF-8 + '\0'）
-    float    chinese;   // 4 B   语文
-    float    math;      // 4 B   数学
-    float    english;   // 4 B   英语
-                        // 4 B   对齐填充
-};                      // 56 B / 条</code></pre>
-              <p class="hint">导出文件与 C 程序的 <code>fwrite(stu, sizeof(Student), 1, fp)</code> 完全一致，可直接替换 <code>data/student.txt</code>。</p>
+              <div class="key-value-list">
+                <div><span>换电脑 / 换浏览器</span><strong>导出 JSON 后在新环境导入</strong></div>
+                <div><span>长期备份</span><strong>建议定期导出数据文件</strong></div>
+                <div><span>导入前</span><strong>建议先备份当前数据</strong></div>
+              </div>
+              <p class="hint">导入时如果学号重复、姓名过长或成绩超出范围，相关记录会被跳过并给出提示。</p>
             </article>
 
             <article class="card data-card">
@@ -406,7 +394,7 @@
                   <span>导入 JSON</span>
                 </button>
               </div>
-              <p class="hint">导入 JSON 会读取其中的 <code>students</code> 数组，可选择覆盖或合并。</p>
+              <p class="hint">导入 JSON 备份文件，可选择覆盖或合并当前数据。</p>
             </article>
 
             <article class="card data-card">
@@ -448,7 +436,7 @@
             <div class="guide-hero-copy">
               <span class="guide-badge"><svg class="icon"><use href="#i-sparkles"></use></svg>第一次使用指南</span>
               <h2>三分钟了解学籍云</h2>
-              <p>这是「高校学生成绩管理系统」的 Web 界面，与 C 语言控制台程序共用同一份数据。按下面的步骤导入数据、管理成绩，再把结果导回 C 程序即可。</p>
+              <p>这是「高校学生成绩管理系统」的网页界面，帮你更方便地查看、录入和管理学生成绩。下面的步骤会带你完成数据导入、成绩管理和备份导出。</p>
               <div class="guide-hero-actions">
                 <button type="button" class="btn btn-primary" data-open-welcome>
                   <svg class="icon"><use href="#i-sparkles"></use></svg>
@@ -456,7 +444,7 @@
                 </button>
                 <button type="button" class="btn btn-ghost" id="btn-guide-import">
                   <svg class="icon"><use href="#i-upload"></use></svg>
-                  <span>导入 student.txt</span>
+                  <span>导入数据文件</span>
                 </button>
               </div>
               <div class="guide-meta">
@@ -467,8 +455,8 @@
             <div class="guide-hero-art" aria-hidden="true">
               <span class="guide-art-ring"></span>
               <span class="guide-art-icon"><svg class="icon"><use href="#i-graduation"></use></svg></span>
-              <span class="guide-art-chip guide-art-chip--1">56 B / 条</span>
-              <span class="guide-art-chip guide-art-chip--2">student.txt</span>
+              <span class="guide-art-chip guide-art-chip--1">自动保存</span>
+              <span class="guide-art-chip guide-art-chip--2">随时备份</span>
             </div>
           </div>
 
@@ -477,7 +465,7 @@
               <span class="guide-step-no">01</span>
               <span class="guide-step-icon icon-badge icon-badge--indigo"><svg class="icon"><use href="#i-upload"></use></svg></span>
               <h3>导入或录入学生</h3>
-              <p>从 C 程序的 <code>data/</code> 目录导入 <code>student.txt</code>；也可以点击右上角「添加学生」手动录入。</p>
+              <p>在「数据管理」中导入已有的学生数据文件；也可以点击右上角「添加学生」手动录入。</p>
               <button type="button" class="link-btn" data-goto="data">前往数据管理</button>
             </article>
             <article class="card guide-step">
@@ -490,8 +478,8 @@
             <article class="card guide-step">
               <span class="guide-step-no">03</span>
               <span class="guide-step-icon icon-badge icon-badge--teal"><svg class="icon"><use href="#i-download"></use></svg></span>
-              <h3>导出给 C 程序</h3>
-              <p>修改完成后导出 <code>student.txt</code>，替换项目中的 <code>data/student.txt</code>，C 程序即可读取新数据。</p>
+              <h3>导出与备份</h3>
+              <p>把当前学生数据导出保存到电脑，方便长期备份，或换设备时再导入使用。</p>
               <button type="button" class="link-btn" data-goto="data">打开导出面板</button>
             </article>
           </div>
@@ -500,29 +488,22 @@
             <article class="card">
               <div class="card-head">
                 <div>
-                  <h2>Web 与 C 后端如何互通</h2>
-                  <p>通过同一个 56 字节二进制文件交换数据</p>
+                  <h2>数据导入与备份</h2>
+                  <p>通过导入 / 导出文件保存和迁移数据</p>
                 </div>
               </div>
               <div class="guide-flow">
                 <div class="guide-flow-item">
                   <span class="icon-badge icon-badge--indigo"><svg class="icon"><use href="#i-upload"></use></svg></span>
-                  <div><strong>从 C 导入网页</strong><p>在「数据管理」选择或拖入 <code>data/student.txt</code>，可覆盖或合并导入。</p></div>
+                  <div><strong>导入已有数据</strong><p>在「数据管理」中选择学生数据文件，可覆盖当前数据或合并导入。</p></div>
                 </div>
                 <span class="guide-flow-arrow">⇄</span>
                 <div class="guide-flow-item">
                   <span class="icon-badge icon-badge--teal"><svg class="icon"><use href="#i-download"></use></svg></span>
-                  <div><strong>从网页导出给 C</strong><p>导出 <code>student.txt</code> 并替换 <code>data/student.txt</code>，建议先备份原文件。</p></div>
+                  <div><strong>导出备份</strong><p>导出学生数据文件或 JSON 备份，保存到电脑，换设备时再导入。</p></div>
                 </div>
               </div>
-              <pre class="code-block"><code>typedef struct Student {
-    uint64_t number;    // 8 B   学号
-    char     name[32];  // 32 B  姓名（UTF-8）
-    float    chinese;   // 4 B   语文
-    float    math;      // 4 B   数学
-    float    english;   // 4 B   英语
-};                      // 共 56 B / 条</code></pre>
-              <p class="hint">C 程序从项目根目录使用相对路径 <code>./data/student.txt</code>，请从根目录运行。</p>
+              <p class="hint">导入前建议先备份当前数据；导出的文件可以保存到任意文件夹。</p>
             </article>
 
             <article class="card">
@@ -533,20 +514,20 @@
                 </div>
               </div>
               <details class="faq-item" open>
-                <summary>网页会直接修改 C 程序的文件吗？</summary>
-                <p>不会。网页运行在浏览器中，只能通过导入 / 导出文件交换数据；需要手动把导出的 <code>student.txt</code> 放回 <code>data/</code> 目录。</p>
+                <summary>网页会直接修改本地文件吗？</summary>
+                <p>不会。浏览器不会自动读写本地文件，需要你手动选择导入文件或下载导出文件。</p>
               </details>
               <details class="faq-item">
                 <summary>数据保存在哪里？会丢吗？</summary>
-                <p>保存在当前浏览器的 <code>localStorage</code> 中，刷新不会丢失；清除浏览器站点数据会丢失，建议定期导出备份。</p>
+                <p>保存在当前浏览器中，刷新不会丢失；清除浏览器数据会丢失，建议定期导出备份。</p>
               </details>
               <details class="faq-item">
                 <summary>为什么导入时有些记录被跳过？</summary>
-                <p>网页会校验学号唯一、姓名不超过 31 个 UTF-8 字节、成绩在 0–100 之间。不符合规则的记录会被跳过并在导入弹窗中列出，导入前建议先备份。</p>
+                <p>学号重复、姓名过长或成绩超出 0–100 的记录会被跳过，导入弹窗中会列出原因。</p>
               </details>
               <details class="faq-item">
                 <summary>怎么换电脑或换浏览器？</summary>
-                <p>在旧环境导出 JSON 或 <code>student.txt</code>，在新环境中导入即可；也可以把 <code>student.txt</code> 交给 C 程序继续使用。</p>
+                <p>在旧设备导出 JSON 或学生数据文件，在新设备中导入即可。</p>
               </details>
             </article>
           </div>
@@ -605,9 +586,7 @@
       <footer class="app-footer">
         <span>学籍云 · 高校学生成绩管理系统</span>
         <span class="footer-sep">·</span>
-        <span>原生 HTML / CSS / JavaScript，无外部依赖</span>
-        <span class="footer-sep">·</span>
-        <span>数据与 C 后端二进制文件互通</span>
+        <span>数据自动保存在本地浏览器，请定期导出备份</span>
       </footer>
     </div>
   </div>

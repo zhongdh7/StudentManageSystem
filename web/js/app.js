@@ -22,8 +22,8 @@
     dashboard: { title: '数据看板', subtitle: '学生成绩概览与关键指标' },
     students: { title: '学生管理', subtitle: '添加、编辑、删除与查找学生记录' },
     analytics: { title: '成绩分析', subtitle: '各科表现、分数段与总分排名' },
-    data: { title: '数据管理', subtitle: '与 C 语言后端 student.txt 数据互通' },
-    guide: { title: '使用说明', subtitle: '第一次使用指南与 C 后端数据互通说明' }
+    data: { title: '数据管理', subtitle: '导入、导出与备份学生数据' },
+    guide: { title: '使用说明', subtitle: '第一次使用指南与常见问题' }
   };
 
   var SORT_LABELS = {
@@ -449,45 +449,44 @@
           '<span class="welcome-logo">' + icon('i-graduation') + '</span>' +
           '<div>' +
             '<h3>欢迎使用学籍云</h3>' +
-            '<p>这是「高校学生成绩管理系统」的 Web 界面，与 C 语言控制台后端共用同一份数据。操作更方便，数据仍以 <code>student.txt</code> 二进制格式为准，可随时导入导出。</p>' +
+            '<p>这是「高校学生成绩管理系统」的网页界面，帮助你更方便地查看、录入和管理学生成绩。数据保存在当前浏览器中，也可以导入 / 导出数据文件进行备份。</p>' +
           '</div>' +
         '</div>' +
         '<div class="welcome-features">' +
           '<span class="welcome-feature">' + icon('i-dashboard') + '数据看板</span>' +
           '<span class="welcome-feature">' + icon('i-users') + '学生管理</span>' +
           '<span class="welcome-feature">' + icon('i-chart') + '成绩分析</span>' +
-          '<span class="welcome-feature">' + icon('i-database') + '数据互通</span>' +
+          '<span class="welcome-feature">' + icon('i-upload') + '导入导出</span>' +
         '</div>' +
-        '<div class="welcome-note"><strong>刚开始使用？</strong>本地没有数据时会自动载入示例数据；之后可随时在「数据管理」中导入自己的 <code>data/student.txt</code>，或直接手动录入。</div>' +
+        '<div class="welcome-note"><strong>刚开始使用？</strong>本地没有数据时会自动载入示例数据；之后可随时在「数据管理」中导入已有的学生数据文件，或直接手动录入。</div>' +
       '</section>',
 
       '<section class="welcome-slide" data-step="1" aria-hidden="true">' +
-        '<h3>和 C 后端共用一份数据</h3>' +
-        '<p>网页通过 <code>student.txt</code> 二进制文件与 C 程序交换数据，不需要修改 C 代码。</p>' +
+        '<h3>导入、管理与备份数据</h3>' +
+        '<p>数据默认保存在当前浏览器中；也可以通过数据文件导入已有记录，或导出备份用于长期保存和换设备。</p>' +
         '<div class="welcome-interop">' +
           '<div class="welcome-interop-card">' +
             '<span class="icon-badge icon-badge--indigo">' + icon('i-upload') + '</span>' +
-            '<strong>从 C 导入网页</strong>' +
-            '<p>在「数据管理」选择或拖入 <code>data/student.txt</code>，支持覆盖或合并导入。</p>' +
+            '<strong>导入已有数据</strong>' +
+            '<p>在「数据管理」选择学生数据文件，可覆盖当前数据或合并导入。</p>' +
           '</div>' +
           '<span class="welcome-interop-arrow">⇄</span>' +
           '<div class="welcome-interop-card">' +
             '<span class="icon-badge icon-badge--teal">' + icon('i-download') + '</span>' +
-            '<strong>从网页导出给 C</strong>' +
-            '<p>导出 <code>student.txt</code>，替换 <code>data/student.txt</code> 后重新运行 C 程序即可。</p>' +
+            '<strong>导出备份</strong>' +
+            '<p>导出学生数据文件或 JSON 备份，保存到电脑，换设备时再导入。</p>' +
           '</div>' +
         '</div>' +
-        '<div class="welcome-format">每条记录 56 字节 · uint64 学号 · UTF-8 姓名（≤31 字节）· float 三科成绩</div>' +
-        '<div class="welcome-note">建议在替换 <code>data/student.txt</code> 前先备份原文件，避免误操作。</div>' +
+        '<div class="welcome-note">导入前建议先备份当前数据；学号、姓名和成绩会自动校验，不合规的记录会被跳过并提示。</div>' +
       '</section>',
 
       '<section class="welcome-slide" data-step="2" aria-hidden="true">' +
         '<h3>三步开始管理成绩</h3>' +
-        '<p>整个流程和 C 控制台菜单一一对应，只是换成了更直观的界面。</p>' +
+        '<p>从录入到分析再到备份，三步就能完成日常管理。</p>' +
         '<div class="welcome-start-list">' +
-          '<div class="welcome-start-item"><span class="welcome-start-no">1</span><div><strong>导入或录入学生</strong><p>导入 C 程序的 <code>student.txt</code>，或点击右上角「添加学生」手动录入学号、姓名和三科成绩。</p></div></div>' +
+          '<div class="welcome-start-item"><span class="welcome-start-no">1</span><div><strong>导入或录入学生</strong><p>导入已有的学生数据文件，或点击右上角「添加学生」手动录入学号、姓名和三科成绩。</p></div></div>' +
           '<div class="welcome-start-item"><span class="welcome-start-no">2</span><div><strong>管理成绩与查看分析</strong><p>搜索、筛选、排序、编辑成绩；在「成绩分析」中查看科目对比、分数段和总分排名。</p></div></div>' +
-          '<div class="welcome-start-item"><span class="welcome-start-no">3</span><div><strong>导出给 C 程序</strong><p>修改完成后导出 <code>student.txt</code>，替换项目中的 <code>data/student.txt</code>，C 程序启动时会自动加载。</p></div></div>' +
+          '<div class="welcome-start-item"><span class="welcome-start-no">3</span><div><strong>导出与备份</strong><p>导出学生数据文件或 JSON 备份，保存到电脑，方便长期保存或换设备。</p></div></div>' +
         '</div>' +
         '<div class="welcome-note">修改会自动保存在浏览器中；按 <strong>Ctrl / Cmd + K</strong> 可快速聚焦搜索框。</div>' +
       '</section>',
@@ -499,7 +498,7 @@
           '<button type="button" class="welcome-choice welcome-choice--primary" data-welcome-action="import">' +
             '<span class="welcome-choice-icon">' + icon('i-upload') + '</span>' +
             '<strong>导入我的数据</strong>' +
-            '<span>选择 C 程序的 data/student.txt</span>' +
+            '<span>选择已有的学生数据文件</span>' +
           '</button>' +
           '<button type="button" class="welcome-choice" data-welcome-action="demo">' +
             '<span class="welcome-choice-icon">' + icon('i-sparkles') + '</span>' +
@@ -531,7 +530,7 @@
 
     openModal({
       title: '第一次使用',
-      subtitle: '3 分钟了解界面、数据与 C 后端互通',
+      subtitle: '3 分钟了解界面、数据与备份',
       icon: icon('i-sparkles'),
       size: 'welcome',
       body: body,
@@ -921,7 +920,7 @@
     return '<tr><td colspan="8"><div class="empty-state">' +
       '<span class="empty-icon">' + icon('i-users') + '</span>' +
       '<h3>还没有学生记录</h3>' +
-      '<p>可以导入 C 后端生成的 <code>student.txt</code>，或直接添加第一位学生。</p>' +
+      '<p>可以导入已有的学生数据文件，或直接添加第一位学生。</p>' +
       '<div class="empty-actions">' +
         '<button type="button" class="btn btn-primary js-empty-add">' + icon('i-plus') + '<span>添加学生</span></button>' +
         '<button type="button" class="btn btn-ghost js-empty-import">' + icon('i-upload') + '<span>导入数据</span></button>' +
@@ -1453,7 +1452,7 @@
           '<span class="field-error" id="f-number-error" data-error></span>' +
         '</div>' +
         '<div class="field" data-field="name">' +
-          '<label for="f-name">姓名 <span class="req">*</span><span class="name-counter" id="name-counter">0/31 字节</span></label>' +
+          '<label for="f-name">姓名 <span class="req">*</span><span class="name-counter" id="name-counter">已输入 0 个字符</span></label>' +
           '<input class="input" id="f-name" name="name" autocomplete="off" placeholder="如 张伟" value="' + escapeHtml(initial.name) + '" aria-required="true" aria-describedby="f-name-error">' +
           '<span class="field-error" id="f-name-error" data-error></span>' +
         '</div>' +
@@ -1462,7 +1461,7 @@
       '<div class="preview-panel">' +
         '<div><span>总分</span><strong id="preview-total">—</strong></div>' +
         '<div><span>平均分</span><strong id="preview-average">—</strong></div>' +
-        '<p>成绩范围 0–100，最多保留一位小数；姓名按 UTF-8 最多 31 字节（与 C 结构体兼容）。</p>' +
+        '<p>成绩范围 0–100，最多保留一位小数；姓名最多 10 个汉字（或 31 个英文字母）。</p>' +
       '</div>' +
     '</form>';
 
@@ -1489,8 +1488,9 @@
     var scoreInputs = $$('.js-score', element);
 
     function updateNameCounter() {
+      var characters = Array.from(nameInput.value.trim()).length;
       var bytes = C.utf8ByteLength(nameInput.value.trim());
-      counter.textContent = bytes + '/31 字节';
+      counter.textContent = '已输入 ' + characters + ' 个字符' + (bytes > 31 ? ' · 超长' : '');
       counter.classList.toggle('is-over', bytes > 31);
     }
 
@@ -1728,13 +1728,13 @@
         '</label>' +
       '</div>' +
       '<p class="hint">' + (options.kind === 'binary'
-        ? '数据来自 C 后端的 student.txt；导入后网页中的数据即为最新记录。'
+        ? '数据来自学生数据文件；导入后网页中的数据即为最新记录。'
         : '数据来自 JSON 备份文件，可选择覆盖或合并。') + '</p>' +
     '</div>';
 
     openModal({
       title: '导入学生数据',
-      subtitle: options.kind === 'binary' ? '二进制 student.txt' : 'JSON 备份文件',
+      subtitle: options.kind === 'binary' ? '学生数据文件' : 'JSON 备份文件',
       icon: icon('i-upload'),
       body: body,
       footer: '<button type="button" class="btn btn-ghost" data-role="cancel">取消</button>' +
@@ -1749,7 +1749,7 @@
 
           if (mode === 'replace') {
             next = students.slice();
-            activityMessage = '导入 ' + (options.kind === 'binary' ? 'student.txt' : 'JSON') +
+            activityMessage = '导入 ' + (options.kind === 'binary' ? '数据文件' : 'JSON') +
               '（覆盖）：' + students.length + ' 条记录';
             toastMessage = '已导入 ' + students.length + ' 条记录';
           } else {
@@ -1815,8 +1815,8 @@
     }
     var bytes = C.encodeBinary(store.students);
     downloadBlob(bytes, 'student.txt', 'application/octet-stream');
-    logExport('导出 student.txt（' + store.students.length + ' 条记录）');
-    toast('已导出 student.txt，可放入 C 程序的 data/ 目录使用', 'success', { duration: 5500 });
+    logExport('导出学生数据文件（' + store.students.length + ' 条记录）');
+    toast('已导出数据文件，可用于备份或迁移', 'success', { duration: 5500 });
   }
 
   function exportJsonFile() {
@@ -1876,7 +1876,7 @@
     confirmDialog({
       title: '清空全部数据',
       message: '确定要删除全部 <strong>' + store.students.length + '</strong> 条学生记录吗？',
-      details: '此操作不可撤销！建议先在「数据管理」中导出 student.txt 或 JSON 备份。',
+      details: '此操作不可撤销！建议先在「数据管理」中导出数据文件或 JSON 备份。',
       confirmText: '确认清空',
       variant: 'danger',
       icon: icon('i-alert-triangle')
