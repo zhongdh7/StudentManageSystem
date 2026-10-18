@@ -4,6 +4,8 @@
 
 本项目是一个 C 语言练习项目，主要用来实践**单向链表**、**动态内存管理**和**二进制文件读写**。
 
+另外，仓库内提供了一套零依赖的 Web 前端界面（[`web/`](web/README.md)），与 C 后端共用 `data/student.txt` 的二进制格式，可导入 C 程序生成的数据文件，也可导出同名文件交给 C 程序读取。
+
 ## 功能
 
 | 序号 | 功能 | 说明 |
@@ -28,6 +30,7 @@ StudentManageSystem/
 ├── StudentManager.h/.c 业务逻辑：菜单、各功能的流程控制、文件存取
 ├── data/
 │   └── student.txt     数据文件（二进制，运行时生成，不纳入版本控制）
+├── web/                Web 前端界面（原生 HTML/CSS/JS，详见 web/README.md）
 └── build/              编译输出目录
 ```
 
@@ -91,6 +94,29 @@ gcc -std=c11 -Wall -o StudentManageSystem.exe main.c Student.c ForwardList.c Stu
 ```
 
 启动后按菜单提示输入序号即可。
+
+## Web 前端界面
+
+`web/` 目录提供了一套原生 HTML / CSS / JavaScript 编写的前端界面，零依赖、无需编译，双击 `web/index.html` 即可使用。
+
+![Web 前端数据看板](web/screenshots/01-dashboard-light.png)
+
+功能与 C 控制台菜单一一对应，并额外提供数据看板、成绩分析、深色主题和移动端布局：
+
+- 添加 / 编辑 / 删除学生，按学号或姓名搜索，按成绩筛选、排序、分页；
+- 成绩分布、及格率、科目对比与总分排名图表；
+- 导入 C 程序生成的 `data/student.txt`，或把网页数据导出为同格式文件；
+- 支持 JSON / CSV 备份，数据自动保存在浏览器 localStorage；
+- 姓名按 UTF-8 限制 31 字节、学号支持完整 uint64、成绩 0–100，与 C 结构体保持一致。
+
+### 快速开始
+
+1. 双击打开 `web/index.html`（推荐 Chrome / Edge）。
+2. 首次打开会载入示例数据，可在「数据管理」中导入自己的 `data/student.txt`。
+3. 修改后点击「导出 student.txt」，替换项目中的 `data/student.txt`，C 程序即可读取新数据。
+
+> 前端通过文件导入/导出与 C 后端交换数据，不会直接修改 C 代码。完整说明、二进制格式与测试方法见
+> [`web/README.md`](web/README.md)。
 
 ## 开发环境
 
